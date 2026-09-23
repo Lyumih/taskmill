@@ -6,6 +6,7 @@ import {
   RobotOutlined,
   ClockCircleOutlined,
 } from '@ant-design/icons'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Alert,
@@ -15,6 +16,8 @@ import {
   Col,
   Collapse,
   Flex,
+  Input,
+  message,
   Progress,
   Row,
   Space,
@@ -27,6 +30,7 @@ import { AgentPlan } from '../../components/AgentPlan'
 import { ProjectContext } from '../../components/ProjectContext'
 import { getTaskMock } from '../../../mock'
 import type { MockProject } from '../../../mock'
+import { buildTaskContext } from '../../utils/buildTaskContext'
 
 const { Paragraph, Text, Title } = Typography
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
@@ -48,10 +52,23 @@ type OverviewPageProps = {
 }
 
 export function OverviewPage({ project, projectId, taskId }: OverviewPageProps) {
+  const taskKey = `${projectId}:${taskId}`
+  const [editDraft, setEditDraft] = useState({ taskKey, value: '' })
+  const [messageApi, contextHolder] = message.useMessage()
+  const editContext = editDraft.taskKey === taskKey ? editDraft.value : ''
   const taskQuery = useQuery({
     queryKey: ['task', projectId, taskId],
     queryFn: () => getTaskMock(projectId, taskId),
   })
+
+  const copyPrompt = async (prompt: string, description: string) => {
+    try {
+      await navigator.clipboard.writeText(prompt)
+      messageApi.success(`${description} скопирован в буфер обмена`)
+    } catch {
+      messageApi.error('Не удалось скопировать текст. Проверьте разрешение браузера на буфер обмена.')
+    }
+  }
 
   if (taskQuery.isPending) {
     return <Flex justify="center"><Spin size="large" /></Flex>
@@ -63,10 +80,42 @@ export function OverviewPage({ project, projectId, taskId }: OverviewPageProps) 
 
   const task = taskQuery.data
   const workflow = task.workflow
+  const taskContext = buildTaskContext(project, task)
 
   return (
     <main>
+      {contextHolder}
       <Flex vertical gap="large">
+        <Card title="Команды для агента">
+          <Flex vertical gap="middle">
+            <Space wrap>
+              <Button onClick={() => void copyPrompt('/taskmill update', 'Команда обновления')}>
+                Обновить
+              </Button>
+              <Button
+                disabled={!editContext.trim()}
+                onClick={() => void copyPrompt(`/taskmill edit ${editContext.trim()}`, 'Команда исправления')}
+                type="primary"
+              >
+                Исправить
+              </Button>
+              <Button onClick={() => void copyPrompt(taskContext, 'Контекст задачи')}>
+                Скопировать контекст
+              </Button>
+            </Space>
+            <Flex vertical gap="small">
+              <Text strong>Изменения для агента</Text>
+              <Input.TextArea
+                aria-label="Изменения для команды исправления"
+                autoSize={{ minRows: 2, maxRows: 6 }}
+                onChange={(event) => setEditDraft({ taskKey, value: event.target.value })}
+                placeholder="Опишите, что нужно изменить в задаче или проекте. Затем нажмите «Исправить»."
+                value={editContext}
+              />
+            </Flex>
+          </Flex>
+        </Card>
+
         <Card>
           <Flex vertical gap="middle">
             <Flex align="center" justify="space-between" wrap="wrap">
