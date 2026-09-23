@@ -1,25 +1,36 @@
 import type { PropsWithChildren } from 'react'
-import { FileTextOutlined } from '@ant-design/icons'
+import {
+  AppstoreOutlined,
+  BranchesOutlined,
+  FileTextOutlined,
+  SettingOutlined,
+} from '@ant-design/icons'
 import { Avatar, Flex, Layout, Menu, Select, Tag, Typography } from 'antd'
 import type { MockProject } from '../../../mock'
 
 const { Content, Header, Sider } = Layout
 const { Text } = Typography
 
+export type AppPage = 'task' | 'settings' | 'blocks' | 'processes'
+
 type AppLayoutProps = PropsWithChildren<{
   projects: MockProject[]
   selectedProjectId: string
   selectedTaskId: string
+  activePage: AppPage
   onSelectProject: (projectId: string) => void
   onSelectTask: (taskId: string) => void
+  onSelectPage: (page: AppPage) => void
 }>
 
 export function AppLayout({
   projects,
   selectedProjectId,
   selectedTaskId,
+  activePage,
   onSelectProject,
   onSelectTask,
+  onSelectPage,
   children,
 }: AppLayoutProps) {
   const selectedProject = projects.find((project) => project.id === selectedProjectId)
@@ -29,7 +40,7 @@ export function AppLayout({
     const title = task.title ?? `Задача ${task.id}`
 
     return [{
-      key: task.id,
+      key: `task:${task.id}`,
       icon: <FileTextOutlined />,
       label: (
         <Flex vertical>
@@ -76,9 +87,43 @@ export function AppLayout({
 
           <Menu
             mode="inline"
-            selectedKeys={[selectedTaskId]}
-            items={taskMenuItems}
-            onClick={({ key }) => onSelectTask(key)}
+            selectedKeys={[activePage === 'task' ? `task:${selectedTaskId}` : activePage]}
+            items={[
+              {
+                type: 'group',
+                label: 'РАБОЧЕЕ ПРОСТРАНСТВО',
+                children: [
+                  { key: 'task', icon: <FileTextOutlined />, label: 'Разбор задачи', disabled: !taskMenuItems.length },
+                ],
+              },
+              {
+                type: 'group',
+                label: 'НАСТРОЙКА ПРОЕКТА',
+                children: [
+                  { key: 'settings', icon: <SettingOutlined />, label: 'Настройки' },
+                  { key: 'blocks', icon: <AppstoreOutlined />, label: 'Блоки' },
+                  { key: 'processes', icon: <BranchesOutlined />, label: 'Процессы' },
+                ],
+              },
+              {
+                type: 'group',
+                label: 'ЗАДАЧИ',
+                children: taskMenuItems,
+              },
+            ]}
+            onClick={({ key }) => {
+              if (key.startsWith('task:')) {
+                onSelectTask(key.slice('task:'.length))
+                return
+              }
+
+              if (key === 'settings' || key === 'blocks' || key === 'processes') {
+                onSelectPage(key)
+                return
+              }
+
+              if (key === 'task') onSelectPage('task')
+            }}
           />
 
           <Flex vertical gap="small">
@@ -93,7 +138,9 @@ export function AppLayout({
       <Layout>
         <Header style={{ display: 'flex' }}>
           <Flex align="center" justify="space-between" gap={16}>
-            <Text>{selectedProject?.name ?? 'Проекты'} / Задачи</Text>
+            <Text>
+              {selectedProject?.name ?? 'Проекты'} / {activePage === 'task' ? 'Разбор задачи' : activePage === 'settings' ? 'Настройки' : activePage === 'blocks' ? 'Блоки' : 'Процессы'}
+            </Text>
             <Tag>Папка не подключена</Tag>
           </Flex>
         </Header>
