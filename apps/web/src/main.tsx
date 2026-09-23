@@ -9,10 +9,7 @@ const queryClient = new QueryClient()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConfigProvider
-      locale={ruRU}
-      theme={{ token: { colorPrimary: '#3156d8', borderRadius: 10 } }}
-    >
+    <ConfigProvider locale={ruRU}>
       <QueryClientProvider client={queryClient}>
         <App />
       </QueryClientProvider>
