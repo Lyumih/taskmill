@@ -1,0 +1,24 @@
+{
+  "name": "taskmill",
+  "version": "1.0.0",
+  "description": "Task workflow assistant",
+  "main": "index.js",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lyumih/taskmill.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Lyumih/taskmill/issues"
+  },
+  "homepage": "https://github.com/Lyumih/taskmill#readme"
+}
