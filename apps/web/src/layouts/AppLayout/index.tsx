@@ -1,20 +1,51 @@
 import type { PropsWithChildren } from 'react'
-import { AppstoreOutlined } from '@ant-design/icons'
-import { Avatar, Flex, Layout, Menu, Tag, Typography } from 'antd'
+import { FileTextOutlined } from '@ant-design/icons'
+import { Avatar, Flex, Layout, Menu, Select, Tag, Typography } from 'antd'
+import type { MockProject } from '../../../mock'
 
 const { Content, Header, Sider } = Layout
 const { Text } = Typography
 
-type AppLayoutProps = PropsWithChildren
+type AppLayoutProps = PropsWithChildren<{
+  projects: MockProject[]
+  selectedProjectId: string
+  selectedTaskId: string
+  onSelectProject: (projectId: string) => void
+  onSelectTask: (taskId: string) => void
+}>
 
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout({
+  projects,
+  selectedProjectId,
+  selectedTaskId,
+  onSelectProject,
+  onSelectTask,
+  children,
+}: AppLayoutProps) {
+  const selectedProject = projects.find((project) => project.id === selectedProjectId)
+  const taskMenuItems = (selectedProject?.tasks ?? []).flatMap((task) => {
+    if (!task.id) return []
+
+    const title = task.title ?? `Задача ${task.id}`
+
+    return [{
+      key: task.id,
+      icon: <FileTextOutlined />,
+      label: (
+        <Flex vertical>
+          <Text ellipsis={{ tooltip: title }} strong>{title}</Text>
+          <Text type="secondary">{task.status ?? 'Статус не указан'}</Text>
+        </Flex>
+      ),
+    }]
+  })
+
   return (
     <Layout>
       <Sider
         breakpoint="md"
         collapsedWidth={0}
         theme="light"
-        trigger={null}
         width={248}
       >
         <Flex vertical gap="large">
@@ -30,16 +61,24 @@ export function AppLayout({ children }: AppLayoutProps) {
             </Flex>
           </Flex>
 
+          <Flex vertical gap="small">
+            <Text type="secondary">Проект</Text>
+            <Select
+              aria-label="Выбрать проект"
+              value={selectedProjectId}
+              options={projects.map((project) => ({
+                value: project.id,
+                label: project.name,
+              }))}
+              onChange={onSelectProject}
+            />
+          </Flex>
+
           <Menu
             mode="inline"
-            selectedKeys={['overview']}
-            items={[
-              {
-                key: 'overview',
-                icon: <AppstoreOutlined />,
-                label: 'Обзор',
-              },
-            ]}
+            selectedKeys={[selectedTaskId]}
+            items={taskMenuItems}
+            onClick={({ key }) => onSelectTask(key)}
           />
 
           <Flex vertical gap="small">
@@ -54,7 +93,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <Layout>
         <Header style={{ display: 'flex' }}>
           <Flex align="center" justify="space-between" gap={16}>
-            <Text>Taskmill / Обзор</Text>
+            <Text>{selectedProject?.name ?? 'Проекты'} / Задачи</Text>
             <Tag>Папка не подключена</Tag>
           </Flex>
         </Header>

@@ -23,7 +23,7 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { taskMock } from '../../../mock/0001'
+import { getTaskMock } from '../../../mock'
 
 const { Paragraph, Text, Title } = Typography
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
@@ -38,10 +38,15 @@ function formatDate(value?: string) {
   return dateFormatter.format(new Date(`${value}T00:00:00`))
 }
 
-export function OverviewPage() {
+type OverviewPageProps = {
+  projectId: string
+  taskId: string
+}
+
+export function OverviewPage({ projectId, taskId }: OverviewPageProps) {
   const taskQuery = useQuery({
-    queryKey: ['task', taskMock.id],
-    queryFn: async () => taskMock,
+    queryKey: ['task', projectId, taskId],
+    queryFn: () => getTaskMock(projectId, taskId),
   })
 
   if (taskQuery.isPending) {
@@ -49,7 +54,7 @@ export function OverviewPage() {
   }
 
   if (taskQuery.isError) {
-    return <Alert message="Не удалось загрузить задачу" type="error" />
+    return <Alert description={taskQuery.error.message} message="Не удалось загрузить задачу" type="error" />
   }
 
   const task = taskQuery.data

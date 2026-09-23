@@ -1,4 +1,4 @@
-import type { TaskData } from '../src/types/task'
+import type { TaskData } from '../../src/types/task'
 
 export const taskMock: TaskData = {
   id: '0001',
