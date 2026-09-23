@@ -1,4 +1,5 @@
-import { Alert, Card, Col, Collapse, Flex, Row, Statistic, Tag, Typography } from 'antd'
+import type { ReactNode } from 'react'
+import { Alert, Card, Col, Collapse, Flex, Row, Statistic, Tag, Tree, Typography } from 'antd'
 import type { TaskData } from '../../types/task'
 
 const { Link, Text } = Typography
@@ -7,9 +8,60 @@ type ExpectedComponentsProps = {
   estimate?: TaskData['expectedComponents']
 }
 
+type FileTreeNode = {
+  key: string
+  title: ReactNode
+  children?: FileTreeNode[]
+}
+
+function buildFileTree(files: NonNullable<TaskData['expectedComponents']>['fileStructure'] = []) {
+  const roots: FileTreeNode[] = []
+  const nodesByPath = new Map<string, FileTreeNode>()
+
+  for (const file of files) {
+    if (!file.path) continue
+
+    const segments = file.path.split('/').filter(Boolean)
+    let parentPath = ''
+    let children = roots
+
+    segments.forEach((segment, index) => {
+      parentPath = parentPath ? `${parentPath}/${segment}` : segment
+      const isFile = index === segments.length - 1
+      let node = nodesByPath.get(parentPath)
+
+      if (!node) {
+        node = { key: parentPath, title: segment }
+        if (!isFile) node.children = []
+        nodesByPath.set(parentPath, node)
+        children.push(node)
+      }
+
+      if (isFile) {
+        node.title = (
+          <Flex align="center" gap="small" wrap="wrap">
+            <Text code>{segment}</Text>
+            <Tag color={file.change === 'new' ? 'success' : 'processing'}>
+              {file.change === 'new' ? 'Создать' : file.change === 'modify' ? 'Изменить' : 'Тип не указан'}
+            </Tag>
+            {file.purpose && <Text type="secondary">{file.purpose}</Text>}
+          </Flex>
+        )
+      } else {
+        node.children ??= []
+        children = node.children
+      }
+    })
+  }
+
+  return roots
+}
+
 export function ExpectedComponents({ estimate }: ExpectedComponentsProps) {
   const libraryComponents = estimate?.libraryComponents ?? []
   const customComponents = estimate?.customComponents ?? []
+  const fileStructure = estimate?.fileStructure ?? []
+  const fileTree = buildFileTree(fileStructure)
   const totalLibraryInstances = libraryComponents.reduce(
     (total, component) => total + (component.estimatedInstances ?? 0),
     0,
@@ -54,6 +106,15 @@ export function ExpectedComponents({ estimate }: ExpectedComponentsProps) {
                   <Statistic title="Использования компонентов библиотеки" value={totalLibraryInstances} />
                 </Col>
               </Row>
+
+              <Flex vertical gap="small">
+                <Text strong>Примерная структура новых/изменённых файлов</Text>
+                {fileTree.length ? (
+                  <Tree defaultExpandAll selectable={false} showLine treeData={fileTree} />
+                ) : (
+                  <Text type="secondary">Структура файлов пока не оценена.</Text>
+                )}
+              </Flex>
 
               <Flex vertical gap="small">
                 <Text strong>Компоненты библиотеки</Text>

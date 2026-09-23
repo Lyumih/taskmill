@@ -33,6 +33,11 @@ export interface Task {
       min: number
       max: number
     }
+    fileStructure: Array<{
+      path: string
+      change: 'new' | 'modify'
+      purpose: string
+    }>
     libraryComponents: Array<{
       name: string
       estimatedInstances: number
@@ -46,6 +51,51 @@ export interface Task {
       purpose: string
       placement: 'module' | 'shared-library'
       placementReason: string
+    }>
+  }
+  apiRequests: Array<{
+    name: string
+    method: string
+    endpoint: string
+    purpose: string
+    statuses: {
+      init: {
+        presentation: 'none' | 'empty' | 'skeleton'
+        description: string
+      }
+      pending: {
+        presentation: 'spinner' | 'skeleton' | 'inline'
+        description: string
+      }
+      data: {
+        presentation: 'content' | 'empty-state'
+        description: string
+      }
+      error: {
+        scenarios: Array<{
+          kind: string
+          visible: boolean
+          scope: 'global' | 'local'
+          presentation: 'inline' | 'global-banner' | 'toast' | 'custom' | 'hidden'
+          userMessage?: string
+          retryable?: boolean
+          customBehavior?: string
+        }>
+      }
+    }
+  }>
+  permissionsFlags: {
+    featureFlags: Array<{
+      key: string
+      controlsBlock: string
+      whenEnabled: string
+      whenDisabled: string
+    }>
+    permissions: Array<{
+      key: string
+      controlsBlock: string
+      whenGranted: string
+      whenDenied: string
     }>
   }
   workflow: {

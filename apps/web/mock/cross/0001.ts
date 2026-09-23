@@ -68,6 +68,33 @@ export const taskMock: TaskData = {
       min: 3,
       max: 5,
     },
+    fileStructure: [
+      {
+        path: 'src/pages/CrossGamePage/index.tsx',
+        change: 'new',
+        purpose: 'Страница игры и координация состояния партии.',
+      },
+      {
+        path: 'src/components/GameBoard/index.tsx',
+        change: 'new',
+        purpose: 'Доска 3×3 и отображение ходов.',
+      },
+      {
+        path: 'src/utils/gameRules.ts',
+        change: 'new',
+        purpose: 'Проверка победных комбинаций и ничьей.',
+      },
+      {
+        path: 'src/utils/gameRules.test.ts',
+        change: 'new',
+        purpose: 'Проверки правил ходов, победы и ничьей, если в проекте настроен test runner.',
+      },
+      {
+        path: 'src/App/index.tsx',
+        change: 'modify',
+        purpose: 'Подключение страницы игры к точке входа существующего React-приложения, если потребуется.',
+      },
+    ],
     libraryComponents: [
       {
         name: 'Button',
@@ -131,6 +158,11 @@ export const taskMock: TaskData = {
           'Логика и визуальное представление специфичны для крестиков-ноликов и пока не переиспользуются другими модулями.',
       },
     ],
+  },
+  apiRequests: [],
+  permissionsFlags: {
+    featureFlags: [],
+    permissions: [],
   },
   workflow: {
     name: 'Создание игры',

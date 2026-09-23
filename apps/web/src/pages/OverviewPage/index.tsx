@@ -27,7 +27,9 @@ import {
   Typography,
 } from 'antd'
 import { AgentPlan } from '../../components/AgentPlan'
+import { ApiErrorHandling } from '../../components/ApiErrorHandling'
 import { ExpectedComponents } from '../../components/ExpectedComponents'
+import { PermissionsFlags } from '../../components/PermissionsFlags'
 import { ProjectContext } from '../../components/ProjectContext'
 import { getTaskMock } from '../../../mock'
 import type { MockProject } from '../../../mock'
@@ -147,6 +149,8 @@ export function OverviewPage({ project, projectId, taskId }: OverviewPageProps) 
             <Flex vertical gap="large">
               <AgentPlan plan={task.plan} />
               <ExpectedComponents estimate={task.expectedComponents} />
+              <ApiErrorHandling requests={task.apiRequests} />
+              <PermissionsFlags rules={task.permissionsFlags} />
 
               <Collapse
                 defaultActiveKey={['workflow', 'references', 'changes']}

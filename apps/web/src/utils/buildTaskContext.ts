@@ -30,5 +30,44 @@ export function buildTaskContext(project: MockProject, task: TaskData) {
     )
   }
 
+  if (task.apiRequests !== undefined) {
+    const requests = task.apiRequests ?? []
+    lines.push(
+      requests.length
+        ? `API-запросы и обработка ошибок:\n${requests.map((request) => {
+            const requestTarget = [request.method, request.endpoint].filter(Boolean).join(' ')
+            const states = (['init', 'pending', 'data'] as const)
+              .map((state) => {
+                const handling = request.statuses?.[state]
+                return handling
+                  ? `  ${state}: ${handling.presentation ?? 'не задано'} — ${handling.description ?? ''}`
+                  : undefined
+              })
+              .filter(Boolean)
+            const errors = request.statuses?.error?.scenarios?.map((error) =>
+              `  error/${error.kind ?? 'неизвестная'}: ${error.visible ? 'показывается' : 'скрыта'}, ${error.scope ?? 'область не задана'}, ${error.presentation ?? 'тип показа не задан'}${error.customBehavior ? `; ${error.customBehavior}` : ''}`,
+            ) ?? []
+
+            return `- ${request.name ?? 'Запрос'}${requestTarget ? ` (${requestTarget})` : ''}${request.purpose ? `: ${request.purpose}` : ''}\n${[...states, ...errors].join('\n')}`
+          }).join('\n')}`
+        : 'API-запросы: не предусмотрены.',
+    )
+  }
+
+  if (task.permissionsFlags !== undefined) {
+    const flags = task.permissionsFlags?.featureFlags ?? []
+    const permissions = task.permissionsFlags?.permissions ?? []
+    const accessRules = [
+      ...flags.map((flag) => `- Flag ${flag.key ?? 'без ключа'} для ${flag.controlsBlock ?? 'блока не указан'}: включён — ${flag.whenEnabled ?? 'не задано'}; выключен — ${flag.whenDisabled ?? 'не задано'}`),
+      ...permissions.map((permission) => `- Permission ${permission.key ?? 'без ключа'} для ${permission.controlsBlock ?? 'блока не указан'}: разрешён — ${permission.whenGranted ?? 'не задано'}; запрещён — ${permission.whenDenied ?? 'не задано'}`),
+    ]
+
+    lines.push(
+      accessRules.length
+        ? `Permissions / Flags:\n${accessRules.join('\n')}`
+        : 'Permissions / Flags: не предусмотрены.',
+    )
+  }
+
   return lines.join('\n\n')
 }
