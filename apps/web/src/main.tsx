@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { BrowserRouter } from 'react-router'
 import { ConfigProvider } from 'antd'
 import ruRU from 'antd/locale/ru_RU'
 import App from './App'
@@ -22,12 +23,14 @@ createRoot(document.getElementById('root')!).render(
         },
       }}
     >
-      <QueryClientProvider client={queryClient}>
-        <App />
-        {import.meta.env.DEV && (
-          <ReactQueryDevtools buttonPosition="bottom-left" initialIsOpen={false} />
-        )}
-      </QueryClientProvider>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <App />
+          {import.meta.env.DEV && (
+            <ReactQueryDevtools buttonPosition="bottom-left" initialIsOpen={false} />
+          )}
+        </QueryClientProvider>
+      </BrowserRouter>
     </ConfigProvider>
   </StrictMode>,
 )
