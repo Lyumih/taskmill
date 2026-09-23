@@ -15,14 +15,18 @@ export function AppLayout({ children }: AppLayoutProps) {
         collapsedWidth={0}
         theme="light"
         trigger={null}
-        width={240}
+        width={248}
       >
         <Flex vertical gap="large">
-          <Flex align="center" gap="small">
-            <Avatar shape="square" size={36}>T</Avatar>
+          <Flex align="center" gap="middle">
+            <Avatar shape="square" size={36}>
+              T
+            </Avatar>
             <Flex vertical>
               <Text strong>taskmill</Text>
-              <Text type="secondary">Рабочее пространство</Text>
+              <Text ellipsis={{ tooltip: 'Рабочее пространство' }} type="secondary">
+                Рабочее пространство
+              </Text>
             </Flex>
           </Flex>
 
@@ -38,7 +42,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             ]}
           />
 
-          <Flex vertical>
+          <Flex vertical gap="small">
             <Text strong>Локальный режим</Text>
             <Text type="secondary">
               Данные проекта будут читаться с этого компьютера.
@@ -48,13 +52,13 @@ export function AppLayout({ children }: AppLayoutProps) {
       </Sider>
 
       <Layout>
-        <Header>
-          <Flex align="center" justify="space-between">
+        <Header style={{ display: 'flex' }}>
+          <Flex align="center" justify="space-between" gap={16}>
             <Text>Taskmill / Обзор</Text>
             <Tag>Папка не подключена</Tag>
           </Flex>
         </Header>
-        <Content>{children}</Content>
+        <Content style={{ padding: 16}}>{children}</Content>
       </Layout>
     </Layout>
   )

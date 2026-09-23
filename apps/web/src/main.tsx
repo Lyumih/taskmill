@@ -9,7 +9,18 @@ const queryClient = new QueryClient()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConfigProvider locale={ruRU}>
+    <ConfigProvider
+      locale={ruRU}
+      theme={{
+        components: {
+          Layout: {
+            headerBg: '#e6f4ff',
+            headerColor: '#1f1f1f',
+            headerPadding: '0 24px',
+          },
+        },
+      }}
+    >
       <QueryClientProvider client={queryClient}>
         <App />
       </QueryClientProvider>
