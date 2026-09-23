@@ -20,6 +20,9 @@ export interface Task {
     steps: Array<{
       title: string
       detail: string
+      actions?: string[]
+      expectedResult?: string
+      verification?: string
       status: 'done' | 'inProgress' | 'pending'
     }>
   }

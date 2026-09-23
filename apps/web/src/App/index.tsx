@@ -8,6 +8,7 @@ function App() {
   const initialProject = mockProjects[0]
   const [projectId, setProjectId] = useState(initialProject?.id ?? '')
   const [taskId, setTaskId] = useState(initialProject?.tasks[0]?.id ?? '')
+  const selectedProject = mockProjects.find((project) => project.id === projectId)
 
   const handleProjectSelect = (nextProjectId: string) => {
     const nextProject = mockProjects.find((project) => project.id === nextProjectId)
@@ -24,10 +25,10 @@ function App() {
       onSelectTask={setTaskId}
       onSelectProject={handleProjectSelect}
     >
-      {taskId ? (
-        <OverviewPage projectId={projectId} taskId={taskId} />
+      {selectedProject && taskId ? (
+        <OverviewPage project={selectedProject} projectId={projectId} taskId={taskId} />
       ) : (
-        <Empty description="В проекте пока нет задач" />
+        <Empty description="В выбранном проекте пока нет задач" />
       )}
     </AppLayout>
   )
