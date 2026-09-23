@@ -1,4 +1,6 @@
-export const taskMock = {
+import type { TaskData } from '../src/types/task'
+
+export const taskMock: TaskData = {
   id: '0001',
   title: 'Подготовить рабочее пространство Taskmill',
   type: 'Новая функциональность',
@@ -105,4 +107,4 @@ export const taskMock = {
       'Изменения workflow сохранять как предложения и подтверждать перед публикацией.',
     ],
   },
-} as const
+}
