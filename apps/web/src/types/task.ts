@@ -26,6 +26,28 @@ export interface Task {
       status: 'done' | 'inProgress' | 'pending'
     }>
   }
+  expectedComponents: {
+    confidence: 'low' | 'medium' | 'high'
+    basis: string
+    files: {
+      min: number
+      max: number
+    }
+    libraryComponents: Array<{
+      name: string
+      estimatedInstances: number
+      purpose: string
+      documentationUrl?: string
+      apiAvailability: 'available' | 'needsVerification' | 'unavailable'
+      apiEvidence: string
+    }>
+    customComponents: Array<{
+      name: string
+      purpose: string
+      placement: 'module' | 'shared-library'
+      placementReason: string
+    }>
+  }
   workflow: {
     name: string
     currentStep: number

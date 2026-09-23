@@ -27,6 +27,7 @@ import {
   Typography,
 } from 'antd'
 import { AgentPlan } from '../../components/AgentPlan'
+import { ExpectedComponents } from '../../components/ExpectedComponents'
 import { ProjectContext } from '../../components/ProjectContext'
 import { getTaskMock } from '../../../mock'
 import type { MockProject } from '../../../mock'
@@ -145,6 +146,7 @@ export function OverviewPage({ project, projectId, taskId }: OverviewPageProps) 
           <Col xs={24} xl={16}>
             <Flex vertical gap="large">
               <AgentPlan plan={task.plan} />
+              <ExpectedComponents estimate={task.expectedComponents} />
 
               <Collapse
                 defaultActiveKey={['workflow', 'references', 'changes']}

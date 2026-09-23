@@ -1,5 +1,6 @@
 import { taskMock as taskmillTask0001 } from './taskmill/0001'
 import { taskMock as taskmillTask0002 } from './taskmill/0002'
+import { taskMock as crossTask0001 } from './cross/0001'
 import { taskMock as exampleTask0001 } from './example/0001'
 import type { TaskData } from '../src/types/task'
 
@@ -79,6 +80,34 @@ export const mockProjects: MockProject[] = [
         'Отдавать данные web-клиенту через API.',
         'Сохранять разрешённые изменения в файлы проекта или внешней папки.',
       ],
+    },
+  },
+  {
+    id: 'cross',
+    name: 'cross',
+    tasks: [crossTask0001],
+    analytics: {
+      provider: 'Matomo',
+      state: 'notConnected',
+      note: 'Для проекта cross источник аналитики не указан.',
+    },
+    testing: {
+      checks: [
+        {
+          name: 'Проверки проекта cross',
+          state: 'notRun',
+          details: 'Целевой репозиторий и команды проверки не указаны.',
+        },
+      ],
+    },
+    mockData: {
+      directory: 'apps/web/mock/cross',
+      note: 'Содержит демонстрационные данные задач проекта cross.',
+    },
+    server: {
+      state: 'notImplemented',
+      description: 'Локальный сервер Taskmill ещё не реализован.',
+      plannedResponsibilities: [],
     },
   },
   {
