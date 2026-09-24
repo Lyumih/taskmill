@@ -1,6 +1,7 @@
 import { getPluginDefinition, getPluginDefaultValues, mergePluginValues } from '../plugins'
 import type { Project } from '../types/project'
 import type { TaskData } from '../types/task'
+import { resolveTaskProcess } from './resolveTaskProcess'
 
 export function buildTaskContext(project: Project, task: TaskData) {
   const lines = [
@@ -14,7 +15,7 @@ export function buildTaskContext(project: Project, task: TaskData) {
   if (task.project?.repository) lines.push(`Репозиторий: ${task.project.repository}`)
   if (task.project?.branch) lines.push(`Ветка: ${task.project.branch}`)
 
-  const process = project.processes.find((item) => item.id === task.processId)
+  const process = resolveTaskProcess(project, task)
   if (process) {
     lines.push(`Процесс: ${process.name} (${process.taskType})`)
     lines.push(`Агент процесса: ${process.agent}`)

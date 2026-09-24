@@ -1,10 +1,12 @@
 import type { PluginValues } from '../plugins/types'
+import type { TaskProcessOverride } from './process'
 
 export interface Task {
   id: string
   title: string
   type: string
   processId: string
+  processOverride?: TaskProcessOverride
   pluginData: Record<string, Record<string, Partial<PluginValues>>>
   pluginNotes: Record<string, Record<string, Record<string, string>>>
   status: string

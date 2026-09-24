@@ -1,4 +1,4 @@
-import type { ProcessDefinition } from '../src/types/process'
+import type { ProcessDefinition } from '../types/process'
 
 function processBlock(pluginId: string) {
   return { id: pluginId, pluginId, enabled: true }

@@ -14,6 +14,21 @@
         "title": { "type": "string", "minLength": 1 },
         "type": { "type": "string", "minLength": 1 },
         "processId": { "type": "string", "minLength": 1 },
+        "processOverride": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "summary": { "type": "string" },
+            "taskType": { "type": "string", "minLength": 1 },
+            "trigger": { "type": "string" },
+            "agent": { "type": "string" },
+            "enabled": { "type": "boolean" },
+            "placeholder": { "type": "boolean" },
+            "stages": { "$ref": "#/definitions/stages" },
+            "blocks": { "$ref": "#/definitions/blocks" }
+          },
+          "additionalProperties": false
+        },
         "pluginData": {
           "type": "object",
           "additionalProperties": { "$ref": "#/definitions/pluginBlocks" }
@@ -40,6 +55,32 @@
     }
   },
   "definitions": {
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "detail", "status"],
+        "properties": {
+          "title": { "type": "string" },
+          "detail": { "type": "string" },
+          "status": { "enum": ["done", "current", "pending"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "pluginId", "enabled"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "pluginId": { "type": "string", "minLength": 1 },
+          "enabled": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
     "jsonObject": {
       "type": "object",
       "additionalProperties": { "$ref": "#/definitions/jsonValue" }

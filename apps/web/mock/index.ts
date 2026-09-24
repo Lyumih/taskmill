@@ -7,7 +7,7 @@ import { migrateLegacyTask } from '../src/plugins/migrateLegacyTask'
 import type { PluginValues } from '../src/plugins/types'
 import type { Project, ProjectPluginConfig } from '../src/types/project'
 import type { TaskMockSeed } from '../src/types/task'
-import { createDefaultProcesses } from './processes'
+import { createDefaultProcesses } from '../src/processes/defaults'
 
 export type MockProject = Project
 

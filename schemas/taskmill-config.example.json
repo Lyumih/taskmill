@@ -4,36 +4,5 @@
     "id": "ef-front-monorepo",
     "name": "EF Front Monorepo"
   },
-  "processes": [
-    {
-      "id": "feature",
-      "name": "Новая функциональность",
-      "summary": "Разобрать и реализовать новую функциональность.",
-      "taskType": "Feature",
-      "trigger": "Jira issue type: Feature",
-      "agent": "Feature Agent",
-      "enabled": true,
-      "placeholder": false,
-      "stages": [
-        {
-          "title": "Разобрать требования",
-          "detail": "Уточнить цель и критерии приёмки.",
-          "status": "current"
-        },
-        {
-          "title": "Реализовать и проверить",
-          "detail": "Внести изменения и выполнить подходящие проверки.",
-          "status": "pending"
-        }
-      ],
-      "blocks": [
-        {
-          "id": "agent-plan",
-          "pluginId": "agent-plan",
-          "enabled": true
-        }
-      ]
-    }
-  ],
   "plugins": []
 }

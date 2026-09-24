@@ -22,6 +22,7 @@ import type { PluginCategory, PluginFieldValue } from '../../plugins/types'
 import type { Project } from '../../types/project'
 import type { TaskData } from '../../types/task'
 import { buildTaskContext } from '../../utils/buildTaskContext'
+import { resolveTaskProcess } from '../../utils/resolveTaskProcess'
 
 const { Paragraph, Text, Title } = Typography
 
@@ -47,7 +48,7 @@ export function OverviewPage({ project, projectId, taskId, task, persisted, onUp
   const [allBlocksExpanded, setAllBlocksExpanded] = useState(false)
   const [messageApi, contextHolder] = message.useMessage()
   const editContext = editDraft.taskKey === taskKey ? editDraft.value : ''
-  const process = project.processes.find((item) => item.id === task.processId)
+  const process = resolveTaskProcess(project, task)
   const workflowBlock = process?.blocks.find((block) => block.pluginId === 'task-workflow' && block.enabled)
   const workflowValues = workflowBlock && process
     ? mergePluginValues(
@@ -113,7 +114,7 @@ export function OverviewPage({ project, projectId, taskId, task, persisted, onUp
 
   const selectProcess = (processId: string) => {
     const nextProcess = project.processes.find((item) => item.id === processId)
-    if (nextProcess) onUpdateTask({ processId, type: nextProcess.taskType })
+    if (nextProcess) onUpdateTask({ processId, type: nextProcess.taskType, processOverride: undefined })
   }
 
   const updatePluginValue = (processId: string, blockId: string, fieldId: string, value: PluginFieldValue) => {

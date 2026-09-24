@@ -17,14 +17,15 @@ Taskmill — инструмент для организации работы н�
 
 ## Формат файлов
 
-- `schemas/taskmill-config.schema.json` — схема конфигурации проекта (`schemaVersion: 1`, project identity, процессы и необязательные plugin overrides).
+- `schemas/taskmill-config.schema.json` — схема конфигурации проекта (`schemaVersion: 1`, project identity, process overrides и необязательные plugin overrides).
 - `schemas/taskmill-task.schema.json` — схема файла задачи (`schemaVersion: 1` и нормализованный `TaskData`).
 - `schemas/taskmill-config.example.json` и `schemas/taskmill-task.example.json` — проверяемые примеры конфигурации и задачи.
 - Задача хранится как `.taskmill/tasks/<taskId>.json`; `task.id` должен совпадать с именем файла без расширения.
 - Схемы являются версионируемым контрактом. При несовместимых изменениях нужно добавить новую версию схемы и явную миграцию.
+- Базовые процессы (`feature`, `bugfix`, `support`, `review`) поставляются Taskmill. Если `processes` в конфиге отсутствует или пуст, используются шаблоны по умолчанию. Проект может задать частичные overrides по `id`; незаданные поля наследуются, а `stages` и `blocks` при явном задании заменяются целиком. Задача может аналогично задать `task.processOverride`; приоритет: template → project → task.
 - Поле `$schema` допускается в обоих форматах. После выпуска схемы его можно направить на файл из immutable Git-тега; не используйте изменяемый `main` как версию контракта.
 
-Для старта скопируйте `schemas/taskmill-config.example.json` в `<project>/.taskmill/config.json`, замените ID и имя проекта и оставьте только нужные процессы. Запустите локальный web-клиент (`npm start`) и выберите `<project>/.taskmill`. После перезагрузки браузера папку потребуется выбрать повторно; дескриптор пока не сохраняется между сессиями.
+Для старта скопируйте `schemas/taskmill-config.example.json` в `<project>/.taskmill/config.json` и замените ID и имя проекта. Процессы по умолчанию подключатся без дополнительных записей. Чтобы переопределить процесс, добавьте в `processes` объект с его `id` и только нужными полями. Запустите локальный web-клиент (`npm start`) и выберите `<project>/.taskmill`. После перезагрузки браузера папку потребуется выбрать повторно; дескриптор пока не сохраняется между сессиями.
 
 ## Модель workspace
 

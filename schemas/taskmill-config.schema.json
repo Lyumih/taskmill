@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Taskmill workspace configuration",
   "type": "object",
-  "required": ["schemaVersion", "project", "processes"],
+  "required": ["schemaVersion", "project"],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
     "schemaVersion": { "const": 1 },
@@ -17,7 +17,7 @@
     },
     "processes": {
       "type": "array",
-      "items": { "$ref": "#/definitions/process" }
+      "items": { "$ref": "#/definitions/processOverride" }
     },
     "plugins": {
       "type": "array",
@@ -25,9 +25,9 @@
     }
   },
   "definitions": {
-    "process": {
+    "processOverride": {
       "type": "object",
-      "required": ["id", "name", "summary", "taskType", "trigger", "agent", "enabled", "placeholder", "stages", "blocks"],
+      "required": ["id"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "name": { "type": "string" },

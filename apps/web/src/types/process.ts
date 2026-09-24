@@ -22,3 +22,11 @@ export type ProcessDefinition = {
   stages: ProcessStage[]
   blocks: ProcessBlock[]
 }
+
+export type ProcessOverride = Partial<Omit<ProcessDefinition, 'id' | 'stages' | 'blocks'>> & {
+  id: ProcessDefinition['id']
+  stages?: ProcessStage[]
+  blocks?: ProcessBlock[]
+}
+
+export type TaskProcessOverride = Partial<Omit<ProcessDefinition, 'id'>>

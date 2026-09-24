@@ -2,7 +2,8 @@ import Ajv from 'ajv'
 import configSchemaSource from '../../../../schemas/taskmill-config.schema.json?raw'
 import taskSchemaSource from '../../../../schemas/taskmill-task.schema.json?raw'
 import { getPluginDefaultValues, mergePluginValues, pluginDefinitions } from '../plugins'
-import type { ProcessDefinition } from '../types/process'
+import { createDefaultProcesses } from '../processes/defaults'
+import type { ProcessDefinition, ProcessOverride, TaskProcessOverride } from '../types/process'
 import type { Project, ProjectPluginConfig } from '../types/project'
 import type { TaskData } from '../types/task'
 
@@ -10,7 +11,7 @@ export type TaskmillConfigFile = {
   $schema?: string
   schemaVersion: 1
   project: Pick<Project, 'id' | 'name'>
-  processes: ProcessDefinition[]
+  processes?: ProcessOverride[]
   plugins?: ProjectPluginConfig[]
 }
 
@@ -92,11 +93,55 @@ function normalizePlugins(configuredPlugins: ProjectPluginConfig[] = []): Projec
   })
 }
 
-function validateProjectReferences(config: TaskmillConfigFile) {
-  ensureUnique(config.processes.map((process) => process.id), 'process id в config.json')
+function mergeProcessOverrides(overrides: ProcessOverride[] = []): ProcessDefinition[] {
+  ensureUnique(overrides.map((process) => process.id), 'process id в config.json')
+  const defaults = createDefaultProcesses()
+  const defaultIds = new Set(defaults.map((process) => process.id))
+  const unknownOverride = overrides.find((process) => !defaultIds.has(process.id))
+  if (unknownOverride) throw new Error(`Неизвестный process id в config.json: ${unknownOverride.id}`)
+
+  return defaults.map((process) => {
+    const override = overrides.find((item) => item.id === process.id)
+    if (!override) return process
+    return {
+      ...process,
+      ...override,
+      stages: override.stages ?? process.stages,
+      blocks: override.blocks ?? process.blocks,
+    }
+  })
+}
+
+function processOverridesFor(projectProcesses: ProcessDefinition[]): ProcessOverride[] {
+  const defaults = createDefaultProcesses()
+  ensureUnique(projectProcesses.map((process) => process.id), 'process id проекта')
+  if (projectProcesses.length !== defaults.length) {
+    throw new Error('Нельзя добавлять или удалять базовые процессы проекта в этой версии Taskmill.')
+  }
+
+  const scalarFields = ['name', 'summary', 'taskType', 'trigger', 'agent', 'enabled', 'placeholder'] as const
+  return defaults.flatMap((base) => {
+    const current = projectProcesses.find((process) => process.id === base.id)
+    if (!current) throw new Error(`В проекте отсутствует базовый процесс ${base.id}`)
+
+    const override: ProcessOverride = { id: base.id }
+    for (const field of scalarFields) {
+      if (JSON.stringify(current[field]) !== JSON.stringify(base[field])) {
+        Object.assign(override, { [field]: current[field] })
+      }
+    }
+    if (JSON.stringify(current.stages) !== JSON.stringify(base.stages)) override.stages = current.stages
+    if (JSON.stringify(current.blocks) !== JSON.stringify(base.blocks)) override.blocks = current.blocks
+
+    return Object.keys(override).length > 1 ? [override] : []
+  })
+}
+
+function validateProjectReferences(processes: ProcessDefinition[]) {
+  ensureUnique(processes.map((process) => process.id), 'process id проекта')
 
   const knownPluginIds = new Set(pluginDefinitions.map((plugin) => plugin.id))
-  for (const process of config.processes) {
+  for (const process of processes) {
     ensureUnique(process.blocks.map((block) => block.id), `block id в процессе ${process.id}`)
     for (const block of process.blocks) {
       if (!knownPluginIds.has(block.pluginId)) {
@@ -107,11 +152,12 @@ function validateProjectReferences(config: TaskmillConfigFile) {
 }
 
 function configFromProject(project: Project, schema?: string): TaskmillConfigFile {
+  const processes = processOverridesFor(project.processes)
   return {
     ...(schema ? { $schema: schema } : {}),
     schemaVersion: TASKMILL_SCHEMA_VERSION,
     project: { id: project.id, name: project.name },
-    processes: project.processes,
+    ...(processes.length ? { processes } : {}),
     plugins: project.plugins,
   }
 }
@@ -174,7 +220,8 @@ export class TaskmillDirectoryWorkspace {
     if (!validateConfig(configValue)) throw validationError('config.json', validateConfig.errors)
 
     const config = configValue
-    validateProjectReferences(config)
+    const processes = mergeProcessOverrides(config.processes)
+    validateProjectReferences(processes)
     const plugins = normalizePlugins(config.plugins)
     const tasks: PersistedTaskData[] = []
     const taskSnapshots = new Map<string, TaskSnapshot>()
@@ -205,8 +252,18 @@ export class TaskmillDirectoryWorkspace {
         if (task.id !== taskIdFromFile) {
           throw new Error(`${entry.name}: task.id должен совпадать с именем файла (${taskIdFromFile})`)
         }
-        if (!config.processes.some((process) => process.id === task.processId)) {
+        if (!processes.some((process) => process.id === task.processId)) {
           throw new Error(`${entry.name}: неизвестный processId ${task.processId}`)
+        }
+        const selectedProcess = processes.find((process) => process.id === task.processId)
+        if (selectedProcess && task.processOverride) {
+          const override = task.processOverride as TaskProcessOverride
+          validateProjectReferences([{
+            ...selectedProcess,
+            ...override,
+            stages: override.stages ?? selectedProcess.stages,
+            blocks: override.blocks ?? selectedProcess.blocks,
+          } as ProcessDefinition])
         }
 
         tasks.push(task)
@@ -219,7 +276,7 @@ export class TaskmillDirectoryWorkspace {
       id: config.project.id,
       name: config.project.name,
       tasks,
-      processes: config.processes,
+      processes,
       plugins,
     }
 
@@ -244,7 +301,8 @@ export class TaskmillDirectoryWorkspace {
   private async saveChanges(project: Project) {
     const config = configFromProject(project, this.configSnapshot.schema)
     if (!validateConfig(config)) throw validationError('config.json', validateConfig.errors)
-    validateProjectReferences(config)
+    const processes = mergeProcessOverrides(config.processes)
+    validateProjectReferences(processes)
 
     const currentConfigHandle = await this.directory.getFileHandle('config.json')
     const currentConfigText = await readText(currentConfigHandle)
