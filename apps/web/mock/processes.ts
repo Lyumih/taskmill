@@ -1,7 +1,7 @@
 import type { ProcessDefinition } from '../src/types/process'
 
-function processBlock(id: string, pluginId: string) {
-  return { id, pluginId, enabled: true }
+function processBlock(pluginId: string) {
+  return { id: pluginId, pluginId, enabled: true }
 }
 
 export function createDefaultProcesses(): ProcessDefinition[] {
@@ -22,9 +22,25 @@ export function createDefaultProcesses(): ProcessDefinition[] {
         { title: 'Проверить и подготовить итог', detail: 'Запустить проверки, описать результат и риски.', status: 'pending' },
       ],
       blocks: [
-        processBlock('context', 'project-context'),
-        processBlock('rules', 'development-rules'),
-        processBlock('task-template', 'task-template'),
+        processBlock('project-context'),
+        processBlock('development-rules'),
+        processBlock('task-template'),
+        processBlock('error-catalog'),
+        processBlock('project-analytics'),
+        processBlock('project-testing'),
+        processBlock('project-mock-data'),
+        processBlock('local-server'),
+        processBlock('agent-plan'),
+        processBlock('expected-components'),
+        processBlock('api-error-handling'),
+        processBlock('permissions-flags'),
+        processBlock('task-workflow'),
+        processBlock('task-references'),
+        processBlock('branch-changes'),
+        processBlock('time-estimates'),
+        processBlock('task-agents'),
+        processBlock('task-dates'),
+        processBlock('task-feedback'),
       ],
     },
     {
@@ -38,9 +54,19 @@ export function createDefaultProcesses(): ProcessDefinition[] {
       placeholder: true,
       stages: [{ title: 'Процесс не настроен', detail: 'Этапы обработки ошибки будут определены позже.', status: 'pending' }],
       blocks: [
-        processBlock('context', 'project-context'),
-        processBlock('errors', 'error-catalog'),
-        processBlock('rules', 'development-rules'),
+        processBlock('project-context'),
+        processBlock('development-rules'),
+        processBlock('error-catalog'),
+        processBlock('project-testing'),
+        processBlock('agent-plan'),
+        processBlock('api-error-handling'),
+        processBlock('permissions-flags'),
+        processBlock('task-workflow'),
+        processBlock('task-references'),
+        processBlock('branch-changes'),
+        processBlock('task-agents'),
+        processBlock('task-dates'),
+        processBlock('task-feedback'),
       ],
     },
     {
@@ -54,8 +80,14 @@ export function createDefaultProcesses(): ProcessDefinition[] {
       placeholder: true,
       stages: [{ title: 'Процесс не настроен', detail: 'Вопросы и этапы поддержки будут определены позже.', status: 'pending' }],
       blocks: [
-        processBlock('context', 'project-context'),
-        processBlock('request', 'task-template'),
+        processBlock('project-context'),
+        processBlock('local-server'),
+        processBlock('task-template'),
+        processBlock('task-workflow'),
+        processBlock('task-references'),
+        processBlock('task-agents'),
+        processBlock('task-dates'),
+        processBlock('task-feedback'),
       ],
     },
     {
@@ -69,8 +101,15 @@ export function createDefaultProcesses(): ProcessDefinition[] {
       placeholder: true,
       stages: [{ title: 'Процесс не настроен', detail: 'Этапы ревью будут определены позже.', status: 'pending' }],
       blocks: [
-        processBlock('rules', 'development-rules'),
-        processBlock('errors', 'error-catalog'),
+        processBlock('development-rules'),
+        processBlock('agent-plan'),
+        processBlock('expected-components'),
+        processBlock('api-error-handling'),
+        processBlock('permissions-flags'),
+        processBlock('task-workflow'),
+        processBlock('branch-changes'),
+        processBlock('task-agents'),
+        processBlock('task-feedback'),
       ],
     },
   ]

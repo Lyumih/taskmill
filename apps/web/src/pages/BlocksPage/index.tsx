@@ -52,7 +52,9 @@ export function BlocksPage({ project, originalProject, onUpdatePlugin }: BlocksP
   const [messageApi, contextHolder] = message.useMessage()
   const enabledCount = project.plugins.filter((item) => item.enabled).length
   const linkedProcessCount = project.processes.filter((process) =>
-    process.blocks.some((block) => project.plugins.some((item) => item.pluginId === block.pluginId)),
+    process.enabled && process.blocks.some((block) =>
+      block.enabled && project.plugins.some((item) => item.pluginId === block.pluginId && item.enabled),
+    ),
   ).length
 
   const getConfig = (pluginId: string): ProjectPluginConfig => project.plugins.find((item) => item.pluginId === pluginId) ?? {

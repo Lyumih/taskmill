@@ -1,6 +1,6 @@
-import type { TaskData } from '../../src/types/task'
+import type { TaskMockSeed } from '../../src/types/task'
 
-export const taskMock: TaskData = {
+export const taskMock: TaskMockSeed = {
   id: '0001',
   title: 'Крестики-нолики',
   processId: 'feature',

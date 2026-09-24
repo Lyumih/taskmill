@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { Button, Card, DatePicker, Flex, Input, InputNumber, Select, Switch, Typography } from 'antd'
 import dayjs from 'dayjs'
-import type { PluginError, PluginField, PluginFieldValue } from '../../plugins/types'
+import type { PluginError, PluginField, PluginFieldValue, PluginRecord } from '../../plugins/types'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -17,11 +17,19 @@ function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+function cloneValue(value: PluginFieldValue): PluginFieldValue {
+  return JSON.parse(JSON.stringify(value)) as PluginFieldValue
+}
+
+function isFieldVisible(field: PluginField, values: PluginRecord) {
+  return !field.visibleWhen || values[field.visibleWhen.fieldId] === field.visibleWhen.equals
+}
+
 export function BlockFieldEditor({ field, onChange }: BlockFieldEditorProps) {
   const [newValue, setNewValue] = useState('')
 
-  if (field.type === 'text') {
-    return <Input aria-label={field.label} value={field.value} onChange={(event) => onChange(event.target.value)} />
+  if (field.type === 'text' || field.type === 'url') {
+    return <Input aria-label={field.label} type={field.type === 'url' ? 'url' : 'text'} value={field.value} onChange={(event) => onChange(event.target.value)} />
   }
 
   if (field.type === 'textarea') {
@@ -133,6 +141,81 @@ export function BlockFieldEditor({ field, onChange }: BlockFieldEditorProps) {
             Добавить
           </Button>
         </Flex>
+      </Flex>
+    )
+  }
+
+  if (field.type === 'object') {
+    return (
+      <Flex vertical gap="small">
+        {field.fields.filter((item) => isFieldVisible(item, field.value)).map((item) => {
+          const nestedField = {
+            ...item,
+            value: Object.hasOwn(field.value, item.id) ? field.value[item.id] : item.value,
+          } as PluginField
+          return (
+            <Flex key={item.id} vertical gap="small">
+              <Text strong>{item.label}</Text>
+              <BlockFieldEditor
+                field={nestedField}
+                onChange={(value) => onChange({ ...field.value, [item.id]: value })}
+              />
+            </Flex>
+          )
+        })}
+      </Flex>
+    )
+  }
+
+  if (field.type === 'object-list') {
+    const updateRecord = (index: number, fieldId: string, value: PluginFieldValue) => {
+      onChange(field.value.map((record, recordIndex) => recordIndex === index
+        ? { ...record, [fieldId]: value }
+        : record))
+    }
+
+    const addRecord = () => {
+      const values = Object.fromEntries(field.fields.map((item) => [item.id, cloneValue(item.value)]))
+      onChange([...field.value, { id: createId('item'), ...values }])
+    }
+
+    return (
+      <Flex vertical gap="small">
+        {field.value.map((record, index) => (
+          <Card
+            key={record.id ?? `${field.id}-${index}`}
+            size="small"
+            title={`${field.label} ${index + 1}`}
+            extra={(
+              <Button
+                aria-label={`Удалить ${field.label.toLowerCase()} ${index + 1}`}
+                icon={<DeleteOutlined />}
+                onClick={() => onChange(field.value.filter((_, recordIndex) => recordIndex !== index))}
+              />
+            )}
+          >
+            <Flex vertical gap="small">
+              {field.fields.filter((item) => isFieldVisible(item, record)).map((item) => {
+                const nestedField = {
+                  ...item,
+                  value: Object.hasOwn(record, item.id) ? record[item.id] : item.value,
+                } as PluginField
+                return (
+                  <Flex key={item.id} vertical gap="small">
+                    <Text strong>{item.label}</Text>
+                    <BlockFieldEditor
+                      field={nestedField}
+                      onChange={(value) => updateRecord(index, item.id, value)}
+                    />
+                  </Flex>
+                )
+              })}
+            </Flex>
+          </Card>
+        ))}
+        <Button icon={<PlusOutlined />} onClick={addRecord}>
+          {field.addLabel ?? `Добавить: ${field.label.toLowerCase()}`}
+        </Button>
       </Flex>
     )
   }

@@ -1,17 +1,46 @@
+import { agentPlanPlugin } from './agent-plan'
+import { apiErrorHandlingPlugin } from './api-error-handling'
+import { branchChangesPlugin } from './branch-changes'
 import { developmentRulesPlugin } from './development-rules'
 import { errorCatalogPlugin } from './error-catalog'
+import { expectedComponentsPlugin } from './expected-components'
+import { localServerPlugin } from './local-server'
+import { permissionsFlagsPlugin } from './permissions-flags'
+import { projectAnalyticsPlugin } from './project-analytics'
 import { projectContextPlugin } from './project-context'
+import { projectMockDataPlugin } from './project-mock-data'
+import { projectTestingPlugin } from './project-testing'
+import { taskAgentsPlugin } from './task-agents'
+import { taskDatesPlugin } from './task-dates'
+import { taskFeedbackPlugin } from './task-feedback'
+import { taskReferencesPlugin } from './task-references'
 import { taskTemplatePlugin } from './task-template'
+import { taskWorkflowPlugin } from './task-workflow'
+import { timeEstimatesPlugin } from './time-estimates'
 import type { PluginValues } from './types'
 
-export { developmentRulesPlugin, errorCatalogPlugin, projectContextPlugin, taskTemplatePlugin }
-export type { PluginDefinition, PluginError, PluginField, PluginFieldValue, PluginValues } from './types'
+export type { PluginDefinition, PluginError, PluginField, PluginFieldValue, PluginRecord, PluginValues } from './types'
 
 export const pluginDefinitions = [
   projectContextPlugin,
   developmentRulesPlugin,
   taskTemplatePlugin,
   errorCatalogPlugin,
+  projectAnalyticsPlugin,
+  projectTestingPlugin,
+  projectMockDataPlugin,
+  localServerPlugin,
+  agentPlanPlugin,
+  expectedComponentsPlugin,
+  apiErrorHandlingPlugin,
+  permissionsFlagsPlugin,
+  taskWorkflowPlugin,
+  taskReferencesPlugin,
+  branchChangesPlugin,
+  timeEstimatesPlugin,
+  taskAgentsPlugin,
+  taskDatesPlugin,
+  taskFeedbackPlugin,
 ]
 
 export function getPluginDefinition(pluginId: string) {

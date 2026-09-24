@@ -4,6 +4,7 @@ export const projectContextPlugin: PluginDefinition = {
   id: 'project-context',
   title: 'Контекст проекта',
   description: 'Краткое описание продукта, стека и полезных ссылок.',
+  projectView: true,
   fields: [
     { id: 'product', label: 'Продукт', type: 'textarea', value: '' },
     { id: 'stack', label: 'Технологический стек', type: 'string-list', value: [], placeholder: 'Добавьте технологию' },

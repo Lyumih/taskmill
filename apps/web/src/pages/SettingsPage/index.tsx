@@ -33,6 +33,7 @@ export function SettingsPage({ project }: SettingsPageProps) {
   const [allowTestRuns, setAllowTestRuns] = useState(true)
   const [allowNetwork, setAllowNetwork] = useState(false)
   const [messageApi, contextHolder] = message.useMessage()
+  const projectDirectory = project.plugins.find((plugin) => plugin.pluginId === 'project-mock-data')?.values.directory
 
   const saveSettings = () => messageApi.success('Настройки сохранены в локальном прототипе')
 
@@ -65,7 +66,7 @@ export function SettingsPage({ project }: SettingsPageProps) {
                 </Flex>
                 <Flex vertical gap="small">
                   <Text strong>Рабочая папка</Text>
-                  <Input aria-label="Рабочая папка" value={project.mockData.directory} readOnly />
+                  <Input aria-label="Рабочая папка" value={typeof projectDirectory === 'string' ? projectDirectory : ''} readOnly />
                 </Flex>
                 <Flex vertical gap="small">
                   <Text strong>Основная ветка</Text>
