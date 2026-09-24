@@ -15,7 +15,7 @@ export function PluginFieldsEditor({ plugin, values, onChange, notes, onNoteChan
   const errors = plugin.validate?.(values) ?? []
 
   return (
-    <Flex vertical gap="middle">
+    <Flex vertical gap="middle" align="stretch">
       {plugin.fields.map((definition) => {
         const field = {
           ...definition,

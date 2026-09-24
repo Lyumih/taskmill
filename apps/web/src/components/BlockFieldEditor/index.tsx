@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CommentOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, Card, DatePicker, Flex, Input, InputNumber, Select, Switch, Typography } from 'antd'
+import { Button, Card, Col, DatePicker, Flex, Input, InputNumber, Row, Select, Switch, Typography } from 'antd'
 import dayjs from 'dayjs'
 import type { PluginError, PluginField, PluginFieldValue, PluginRecord } from '../../plugins/types'
 
@@ -73,14 +73,16 @@ export function BlockFieldEditor({ field, fieldPath, notes, onChange, onNoteChan
     if (field.type === 'number') {
       return (
         <Flex align="center" gap="small">
-          <InputNumber
-            aria-label={field.label}
-            value={field.value}
-            min={field.min}
-            max={field.max}
-            onChange={(value) => onChange(value)}
-            style={{ width: '100%' }}
-          />
+          <Flex flex="1">
+            <InputNumber
+              aria-label={field.label}
+              value={field.value}
+              min={field.min}
+              max={field.max}
+              onChange={(value) => onChange(value)}
+              style={{ width: '100%' }}
+            />
+          </Flex>
           {field.unit && <Text type="secondary">{field.unit}</Text>}
         </Flex>
       )
@@ -105,16 +107,18 @@ export function BlockFieldEditor({ field, fieldPath, notes, onChange, onNoteChan
     if (field.type === 'url-list' || field.type === 'string-list') {
       const inputType = field.type === 'url-list' ? 'url' : 'text'
       return (
-        <Flex vertical gap="small">
+        <Flex vertical gap="small" align="stretch">
           {field.value.map((value, index) => (
             <Flex key={`${fieldPath}-${index}`} align="flex-start" gap="small">
-              <Input
-                aria-label={`${field.label}, строка ${index + 1}`}
-                type={inputType}
-                value={value}
-                placeholder={field.placeholder}
-                onChange={(event) => onChange(field.value.map((item, itemIndex) => itemIndex === index ? event.target.value : item))}
-              />
+              <Flex flex="1">
+                <Input
+                  aria-label={`${field.label}, строка ${index + 1}`}
+                  type={inputType}
+                  value={value}
+                  placeholder={field.placeholder}
+                  onChange={(event) => onChange(field.value.map((item, itemIndex) => itemIndex === index ? event.target.value : item))}
+                />
+              </Flex>
               <Button
                 aria-label={`Удалить строку ${index + 1} из поля ${field.label}`}
                 icon={<DeleteOutlined />}
@@ -122,20 +126,22 @@ export function BlockFieldEditor({ field, fieldPath, notes, onChange, onNoteChan
               />
             </Flex>
           ))}
-          <Flex gap="small">
-            <Input
-              aria-label={`Новое значение для поля ${field.label}`}
-              type={inputType}
-              value={newValue}
-              placeholder={field.placeholder}
-              onChange={(event) => setNewValue(event.target.value)}
-              onPressEnter={(event) => {
-                event.preventDefault()
-                if (!newValue.trim()) return
-                onChange([...field.value, newValue.trim()])
-                setNewValue('')
-              }}
-            />
+          <Flex gap="small" align="center">
+            <Flex flex="1">
+              <Input
+                aria-label={`Новое значение для поля ${field.label}`}
+                type={inputType}
+                value={newValue}
+                placeholder={field.placeholder}
+                onChange={(event) => setNewValue(event.target.value)}
+                onPressEnter={(event) => {
+                  event.preventDefault()
+                  if (!newValue.trim()) return
+                  onChange([...field.value, newValue.trim()])
+                  setNewValue('')
+                }}
+              />
+            </Flex>
             <Button
               aria-label={`Добавить строку в поле ${field.label}`}
               icon={<PlusOutlined />}
@@ -154,7 +160,7 @@ export function BlockFieldEditor({ field, fieldPath, notes, onChange, onNoteChan
 
     if (field.type === 'object') {
       return (
-        <Flex vertical gap="small">
+        <Flex vertical gap="small" align="stretch">
           {field.fields.filter((item) => isFieldVisible(item, field.value)).map((item) => {
             const nestedField = {
               ...item,
@@ -190,7 +196,7 @@ export function BlockFieldEditor({ field, fieldPath, notes, onChange, onNoteChan
       }
 
       return (
-        <Flex vertical gap="small">
+        <Flex vertical gap="small" align="stretch">
           {field.value.map((record, index) => (
             <Card
               key={record.id ?? `${fieldPath}-${index}`}
@@ -208,7 +214,7 @@ export function BlockFieldEditor({ field, fieldPath, notes, onChange, onNoteChan
                 />
               )}
             >
-              <Flex vertical gap="small">
+              <Flex vertical gap="small" align="stretch">
                 {field.fields.filter((item) => isFieldVisible(item, record)).map((item) => {
                   const nestedField = {
                     ...item,
@@ -247,10 +253,10 @@ export function BlockFieldEditor({ field, fieldPath, notes, onChange, onNoteChan
     if (field.type !== 'errors') return null
 
     return (
-      <Flex vertical gap="small">
+      <Flex vertical gap="small" align="stretch">
         {field.value.map((error, index) => (
           <Card key={error.id} size="small">
-            <Flex vertical gap="small">
+            <Flex vertical gap="small" align="stretch">
               <Flex align="center" gap="small">
                 <Select
                   aria-label={`Тип ошибки ${index + 1}`}
@@ -296,47 +302,57 @@ export function BlockFieldEditor({ field, fieldPath, notes, onChange, onNoteChan
   const handleNoteChange = (value: string) => onNoteChange?.(fieldPath, value)
 
   return (
-    <Flex vertical gap="small">
-      <Flex align="center" justify="space-between" gap="small">
+    <Row gutter={[12, 8]} align="top">
+      <Col xs={24} sm={5} xl={3}>
         <Text strong>{field.label}</Text>
-        {onNoteChange && (
-          <Button
-            aria-label={`${noteOpen ? 'Скрыть' : note ? 'Открыть' : 'Добавить'} заметку к полю ${field.label}`}
-            aria-expanded={noteOpen}
-            icon={<CommentOutlined />}
-            type={note.trim() ? 'primary' : 'text'}
-            onClick={() => setNoteOpen((open) => !open)}
-          />
-        )}
-      </Flex>
-      {renderControl()}
-      {noteOpen && onNoteChange && (
-        <Flex align="flex-end" gap="small">
-          <TextArea
-            aria-label={`Заметка к полю ${field.label}`}
-            autoSize={{ minRows: 2, maxRows: 5 }}
-            placeholder="Добавьте заметку к этому полю"
-            value={note}
-            onChange={(event) => handleNoteChange(event.target.value)}
-            onBlur={(event) => {
-              if (!event.target.value.trim()) {
-                handleNoteChange('')
-                setNoteOpen(false)
-              }
-            }}
-          />
-          <Button
-            aria-label={`Удалить заметку к полю ${field.label}`}
-            danger
-            disabled={!note.trim()}
-            icon={<DeleteOutlined />}
-            onClick={() => {
-              handleNoteChange('')
-              setNoteOpen(false)
-            }}
-          />
+      </Col>
+      <Col xs={24} sm={19} xl={21}>
+        <Flex vertical gap="small" align="stretch">
+          <Flex align="flex-start" gap="small">
+            <Flex flex="1" vertical align="stretch">
+              {renderControl()}
+            </Flex>
+            {onNoteChange && (
+              <Button
+                aria-label={`${noteOpen ? 'Скрыть' : note ? 'Открыть' : 'Добавить'} заметку к полю ${field.label}`}
+                aria-expanded={noteOpen}
+                icon={<CommentOutlined />}
+                type={note.trim() ? 'primary' : 'text'}
+                onClick={() => setNoteOpen((open) => !open)}
+              />
+            )}
+          </Flex>
+          {noteOpen && onNoteChange && (
+            <Flex align="flex-end" gap="small">
+              <Flex flex="1">
+                <TextArea
+                  aria-label={`Заметка к полю ${field.label}`}
+                  autoSize={{ minRows: 2, maxRows: 5 }}
+                  placeholder="Добавьте заметку к этому полю"
+                  value={note}
+                  onChange={(event) => handleNoteChange(event.target.value)}
+                  onBlur={(event) => {
+                    if (!event.target.value.trim()) {
+                      handleNoteChange('')
+                      setNoteOpen(false)
+                    }
+                  }}
+                />
+              </Flex>
+              <Button
+                aria-label={`Удалить заметку к полю ${field.label}`}
+                danger
+                disabled={!note.trim()}
+                icon={<DeleteOutlined />}
+                onClick={() => {
+                  handleNoteChange('')
+                  setNoteOpen(false)
+                }}
+              />
+            </Flex>
+          )}
         </Flex>
-      )}
-    </Flex>
+      </Col>
+    </Row>
   )
 }
