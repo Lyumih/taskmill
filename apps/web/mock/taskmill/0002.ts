@@ -4,6 +4,7 @@ export const taskMock: TaskData = {
   id: '0002',
   title: 'Добавить переключение между задачами в веб-клиенте',
   type: 'Новая функциональность',
+  processId: 'feature',
   status: 'Новая',
   priority: 'Средний',
   project: {

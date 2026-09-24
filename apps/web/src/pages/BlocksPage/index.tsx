@@ -1,127 +1,77 @@
 import { useState } from 'react'
-import { AppstoreOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import {
-  Button,
-  Card,
-  Col,
-  Flex,
-  Form,
-  Input,
-  message,
-  Modal,
-  Row,
-  Space,
-  Switch,
-  Tag,
-  Typography,
-} from 'antd'
-import type { MockProject } from '../../../mock'
+import { AppstoreOutlined, CommentOutlined, CopyOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Col, Flex, Input, message, Row, Space, Switch, Tag, Typography } from 'antd'
+import { PluginFieldsEditor } from '../../components/PluginFieldsEditor'
+import { getPluginDefaultValues, pluginDefinitions } from '../../plugins'
+import type { PluginDefinition, PluginFieldValue } from '../../plugins/types'
+import type { Project, ProjectPluginConfig } from '../../types/project'
 
 const { Text, Title } = Typography
-const { TextArea } = Input
-
-type BlockElement = {
-  id: string
-  title: string
-  detail: string
-}
-
-type ProjectBlock = {
-  id: string
-  title: string
-  description: string
-  enabled: boolean
-  elements: BlockElement[]
-}
-
-type Editor = {
-  kind: 'block' | 'element'
-  blockId?: string
-  elementId?: string
-}
 
 type BlocksPageProps = {
-  project: MockProject
+  project: Project
+  originalProject: Project
+  onUpdatePlugin: (pluginId: string, patch: Partial<ProjectPluginConfig>) => void
 }
 
-const initialBlocks: ProjectBlock[] = [
-  {
-    id: 'project-context',
-    title: 'Контекст проекта',
-    description: 'Краткое описание продукта, его аудитории и ключевых ограничений.',
-    enabled: true,
-    elements: [
-      { id: 'product', title: 'Продукт', detail: 'Taskmill помогает команде разбирать задачи и готовить работу для ИИ-агентов.' },
-      { id: 'stack', title: 'Технологический стек', detail: 'React, TypeScript, Vite и Ant Design.' },
-    ],
-  },
-  {
-    id: 'development-rules',
-    title: 'Правила разработки',
-    description: 'Общие договорённости, которые агент учитывает при изменении кода.',
-    enabled: true,
-    elements: [
-      { id: 'small-diffs', title: 'Небольшие изменения', detail: 'Сначала ищи минимальное решение и не меняй несвязанные файлы.' },
-      { id: 'verify', title: 'Проверка результата', detail: 'Запускай релевантные проверки и сообщай об ограничениях.' },
-    ],
-  },
-  {
-    id: 'task-template',
-    title: 'Шаблон задачи',
-    description: 'Структурирует контекст перед стартом агента.',
-    enabled: false,
-    elements: [
-      { id: 'acceptance', title: 'Критерии готовности', detail: 'Перечисли ожидаемое поведение и условия приёмки.' },
-    ],
-  },
-]
+function buildPluginEditPrompt(project: Project, originalProject: Project, plugin: PluginDefinition, config: ProjectPluginConfig) {
+  const changes: string[] = []
+  const originalConfig = originalProject.plugins.find((item) => item.pluginId === plugin.id)
+  const originalValues = originalConfig?.values ?? getPluginDefaultValues(plugin.id)
 
-export function BlocksPage({ project }: BlocksPageProps) {
-  const [blocks, setBlocks] = useState(initialBlocks)
-  const [editor, setEditor] = useState<Editor | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form] = Form.useForm<{ name: string; detail: string }>()
-  const [messageApi, contextHolder] = message.useMessage()
-  const enabledCount = blocks.filter((block) => block.enabled).length
-  const elementCount = blocks.reduce((total, block) => total + block.elements.length, 0)
-
-  const openEditor = (nextEditor: Editor, initialValues = { name: '', detail: '' }) => {
-    setEditor(nextEditor)
-    form.setFieldsValue(initialValues)
-    setModalOpen(true)
+  if (config.enabled !== (originalConfig?.enabled ?? true)) {
+    changes.push(`Доступность плагина: ${originalConfig?.enabled ? 'включён' : 'выключен'} → ${config.enabled ? 'включён' : 'выключен'}`)
   }
 
-  const saveEditor = (values: { name: string; detail: string }) => {
-    if (!editor) return
-
-    if (editor.kind === 'block') {
-      if (editor.blockId) {
-        setBlocks((current) => current.map((block) => block.id === editor.blockId
-          ? { ...block, title: values.name, description: values.detail }
-          : block))
-      } else {
-        setBlocks((current) => [...current, {
-          id: `block-${Date.now()}`,
-          title: values.name,
-          description: values.detail,
-          enabled: true,
-          elements: [],
-        }])
-      }
-    } else if (editor.blockId) {
-      setBlocks((current) => current.map((block) => {
-        if (block.id !== editor.blockId) return block
-        const elements = editor.elementId
-          ? block.elements.map((element) => element.id === editor.elementId
-            ? { ...element, title: values.name, detail: values.detail }
-            : element)
-          : [...block.elements, { id: `element-${Date.now()}`, title: values.name, detail: values.detail }]
-        return { ...block, elements }
-      }))
+  for (const field of plugin.fields) {
+    const value = Object.hasOwn(config.values, field.id) ? config.values[field.id] : field.value
+    const originalValue = Object.hasOwn(originalValues, field.id) ? originalValues[field.id] : field.value
+    if (JSON.stringify(value) !== JSON.stringify(originalValue)) {
+      changes.push(`Поле «${field.label}» (${field.id}):\nБыло:\n${JSON.stringify(originalValue, null, 2)}\nСтало:\n${JSON.stringify(value, null, 2)}`)
     }
+  }
 
-    setModalOpen(false)
-    messageApi.success('Изменение сохранено в локальном прототипе')
+  if (config.comment !== (originalConfig?.comment ?? '')) {
+    changes.push(`Комментарий к плагину: ${JSON.stringify(originalConfig?.comment ?? '')} → ${JSON.stringify(config.comment)}`)
+  }
+  if (changes.length === 0) return null
+
+  const rootPath = project.tasks.find((task) => task.project?.rootPath)?.project?.rootPath
+  return [
+    'Используй скилл `taskmill-edit`, чтобы изменить файл конфигурации Taskmill.',
+    `Проект: ${project.name} (${project.id})${rootPath ? `, ${rootPath}` : ''}.`,
+    `Блок-элемент: «${plugin.title}» (pluginId: ${plugin.id}).`,
+    'Примени только перечисленные изменения к настройкам этого плагина, сохранив остальные настройки и процессы.',
+    'Изменения:',
+    ...changes.map((change, index) => `${index + 1}. ${change}`),
+  ].join('\n\n')
+}
+
+export function BlocksPage({ project, originalProject, onUpdatePlugin }: BlocksPageProps) {
+  const [openComments, setOpenComments] = useState<Record<string, boolean>>({})
+  const [messageApi, contextHolder] = message.useMessage()
+  const enabledCount = project.plugins.filter((item) => item.enabled).length
+  const linkedProcessCount = project.processes.filter((process) =>
+    process.blocks.some((block) => project.plugins.some((item) => item.pluginId === block.pluginId)),
+  ).length
+
+  const getConfig = (pluginId: string): ProjectPluginConfig => project.plugins.find((item) => item.pluginId === pluginId) ?? {
+    pluginId,
+    enabled: true,
+    values: getPluginDefaultValues(pluginId),
+    comment: '',
+  }
+
+  const copyEditPrompt = async (plugin: PluginDefinition, config: ProjectPluginConfig) => {
+    const prompt = buildPluginEditPrompt(project, originalProject, plugin, config)
+    if (!prompt) return
+
+    try {
+      await navigator.clipboard.writeText(prompt)
+      messageApi.success('Промпт для taskmill-edit скопирован')
+    } catch {
+      messageApi.error('Не удалось скопировать промпт. Проверьте разрешение браузера на доступ к буферу обмена.')
+    }
   }
 
   return (
@@ -130,112 +80,85 @@ export function BlocksPage({ project }: BlocksPageProps) {
       <Flex vertical gap="large">
         <Flex align="flex-start" justify="space-between" gap="middle" wrap="wrap">
           <Flex vertical gap="small">
-            <Title level={2} style={{ margin: 0 }}>Блоки проекта</Title>
-            <Text type="secondary">Соберите контекст и инструкции, которые Taskmill передаёт агентам проекта {project.name}.</Text>
+            <Title level={2} style={{ margin: 0 }}>Блоки-элементы</Title>
+            <Text type="secondary">Переиспользуемые плагины проекта {project.name}. Процессы собираются из этих блоков.</Text>
           </Flex>
-          <Button
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={() => openEditor({ kind: 'block' })}
-          >
-            Добавить блок
-          </Button>
+          <Tag icon={<AppstoreOutlined />} color="blue">{pluginDefinitions.length} плагина</Tag>
         </Flex>
 
+        <Alert
+          type="info"
+          showIcon
+          message="Каталог плагинов"
+          description="Логика и схема каждого блока находятся в src/plugins. Здесь настраиваются значения и доступность плагинов для выбранного проекта."
+        />
+
         <Flex gap="small" wrap="wrap">
-          <Tag icon={<AppstoreOutlined />} color="blue">{blocks.length} блока</Tag>
-          <Tag color="success">{enabledCount} активны</Tag>
-          <Tag>{elementCount} элементов</Tag>
-          <Tag color="default">Источник: локальная конфигурация</Tag>
+          <Tag color="success">{enabledCount} доступны</Tag>
+          <Tag>{linkedProcessCount} процессов используют блоки проекта</Tag>
+          <Tag color="default">Изменения хранятся в workspace до перезагрузки</Tag>
         </Flex>
 
         <Row gutter={[16, 16]}>
-          {blocks.map((block) => (
-            <Col key={block.id} xs={24} xl={12}>
-              <Card
-                title={<Flex vertical><Text strong>{block.title}</Text><Text type="secondary">{block.description}</Text></Flex>}
-                extra={<Switch aria-label={`Активность блока ${block.title}`} checked={block.enabled} onChange={(enabled) => setBlocks((current) => current.map((item) => item.id === block.id ? { ...item, enabled } : item))} />}
-              >
-                <Flex vertical gap="middle">
-                  <Flex justify="space-between" align="center" wrap="wrap" gap="small">
-                    <Tag color={block.enabled ? 'success' : 'default'}>{block.enabled ? 'Передаётся агенту' : 'Выключен'}</Tag>
-                    <Space wrap>
-                      <Button
-                        icon={<EditOutlined />}
-                        aria-label={`Редактировать блок ${block.title}`}
-                        onClick={() => openEditor(
-                          { kind: 'block', blockId: block.id },
-                          { name: block.title, detail: block.description },
-                        )}
-                      >
-                        Редактировать
-                      </Button>
-                      <Button
-                        icon={<PlusOutlined />}
-                        onClick={() => openEditor({ kind: 'element', blockId: block.id })}
-                      >
-                        Элемент
-                      </Button>
-                    </Space>
-                  </Flex>
-                  {block.elements.length ? (
-                    <Flex vertical gap="small">
-                      {block.elements.map((element) => (
-                        <Card key={element.id} size="small">
-                          <Flex align="flex-start" justify="space-between" gap="middle">
-                            <Flex vertical gap="small">
-                              <Text strong>{element.title}</Text>
-                              <Text type="secondary">{element.detail}</Text>
-                            </Flex>
-                            <Button
-                              aria-label={`Редактировать элемент ${element.title}`}
-                              icon={<EditOutlined />}
-                              type="text"
-                              onClick={() => openEditor(
-                                { kind: 'element', blockId: block.id, elementId: element.id },
-                                { name: element.title, detail: element.detail },
-                              )}
-                            />
-                          </Flex>
-                        </Card>
-                      ))}
+          {pluginDefinitions.map((plugin) => {
+            const config = getConfig(plugin.id)
+            const prompt = buildPluginEditPrompt(project, originalProject, plugin, config)
+            return (
+              <Col key={plugin.id} xs={24} xl={12}>
+                <Card
+                  title={<Flex vertical><Text strong>{plugin.title}</Text><Text type="secondary">{plugin.description}</Text></Flex>}
+                  extra={<Switch aria-label={`Доступность плагина ${plugin.title}`} checked={config.enabled} onChange={(enabled) => onUpdatePlugin(plugin.id, { enabled })} />}
+                >
+                  <Flex vertical gap="middle">
+                    <Flex align="center" justify="space-between" gap="small" wrap="wrap">
+                      <Tag color={config.enabled ? 'success' : 'default'}>{config.enabled ? 'Доступен процессам' : 'Выключен для проекта'}</Tag>
+                      <Space wrap>
+                        <Button
+                          icon={<CommentOutlined />}
+                          aria-label={`${openComments[plugin.id] ? 'Скрыть' : 'Показать'} комментарий к плагину ${plugin.title}`}
+                          aria-expanded={Boolean(openComments[plugin.id])}
+                          onClick={() => setOpenComments((current) => ({ ...current, [plugin.id]: !current[plugin.id] }))}
+                        >
+                          Комментарий
+                        </Button>
+                        <Button
+                          icon={<CopyOutlined />}
+                          type={prompt ? 'primary' : 'default'}
+                          disabled={!prompt}
+                          onClick={() => void copyEditPrompt(plugin, config)}
+                        >
+                          Исправить
+                        </Button>
+                      </Space>
                     </Flex>
-                  ) : (
-                    <Text type="secondary">В этом блоке пока нет элементов.</Text>
-                  )}
-                </Flex>
-              </Card>
-            </Col>
-          ))}
+
+                    <PluginFieldsEditor
+                      plugin={plugin}
+                      values={config.values}
+                      onChange={(fieldId: string, value: PluginFieldValue) => onUpdatePlugin(plugin.id, {
+                        values: { ...config.values, [fieldId]: value },
+                      })}
+                    />
+
+                    {openComments[plugin.id] && (
+                      <Flex vertical gap="small">
+                        <Text strong>Комментарий к плагину</Text>
+                        <Input.TextArea
+                          aria-label={`Комментарий к плагину ${plugin.title}`}
+                          value={config.comment}
+                          placeholder="Добавьте контекст для правки"
+                          autoSize={{ minRows: 2, maxRows: 5 }}
+                          onChange={(event) => onUpdatePlugin(plugin.id, { comment: event.target.value })}
+                        />
+                      </Flex>
+                    )}
+                  </Flex>
+                </Card>
+              </Col>
+            )
+          })}
         </Row>
       </Flex>
-
-      <Modal
-        open={modalOpen}
-        title={editor?.kind === 'block' ? (editor.blockId ? 'Редактировать блок' : 'Новый блок') : (editor?.elementId ? 'Редактировать элемент' : 'Новый элемент')}
-        okText="Сохранить"
-        cancelText="Отмена"
-        onCancel={() => setModalOpen(false)}
-        onOk={() => form.submit()}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" onFinish={saveEditor}>
-          <Form.Item
-            label={editor?.kind === 'block' ? 'Название блока' : 'Название элемента'}
-            name="name"
-            rules={[{ required: true, whitespace: true, message: 'Укажите название' }]}
-          >
-            <Input autoFocus />
-          </Form.Item>
-          <Form.Item
-            label={editor?.kind === 'block' ? 'Назначение блока' : 'Инструкция для агента'}
-            name="detail"
-            rules={[{ required: true, whitespace: true, message: 'Добавьте описание' }]}
-          >
-            <TextArea autoSize={{ minRows: 3, maxRows: 6 }} />
-          </Form.Item>
-        </Form>
-      </Modal>
     </main>
   )
 }

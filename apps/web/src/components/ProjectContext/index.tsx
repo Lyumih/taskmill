@@ -1,10 +1,11 @@
 import { Collapse, Flex, Statistic, Tag, Typography } from 'antd'
-import type { MockProject } from '../../../mock'
+import { getPluginDefinition } from '../../plugins'
+import type { Project } from '../../types/project'
 
 const { Text } = Typography
 
 type ProjectContextProps = {
-  project: MockProject
+  project: Project
 }
 
 export function ProjectContext({ project }: ProjectContextProps) {
@@ -12,8 +13,31 @@ export function ProjectContext({ project }: ProjectContextProps) {
 
   return (
     <Collapse
-      defaultActiveKey={['analytics', 'testing', 'mock-data', 'server']}
+      defaultActiveKey={['processes', 'analytics', 'testing', 'mock-data', 'server']}
       items={[
+        {
+          key: 'processes',
+          label: 'Процессы и блоки',
+          extra: <Tag color="blue">{project.processes.filter((process) => process.enabled).length} активны</Tag>,
+          children: (
+            <Flex vertical gap="middle">
+              {project.processes.map((process) => (
+                <Flex key={process.id} vertical gap="small">
+                  <Flex align="center" justify="space-between" gap="small" wrap="wrap">
+                    <Text strong>{process.name}</Text>
+                    <Tag color={process.enabled ? 'success' : 'default'}>{process.enabled ? 'Включён' : 'Выключен'}</Tag>
+                  </Flex>
+                  <Text type="secondary">{process.taskType} · задач: {project.tasks.filter((task) => task.processId === process.id).length}</Text>
+                  <Flex gap="small" wrap="wrap">
+                    {process.blocks.filter((block) => block.enabled).map((block) => (
+                      <Tag key={block.id}>{getPluginDefinition(block.pluginId)?.title ?? block.pluginId}</Tag>
+                    ))}
+                  </Flex>
+                </Flex>
+              ))}
+            </Flex>
+          ),
+        },
         {
           key: 'analytics',
           label: 'Matomo (Аналитика)',

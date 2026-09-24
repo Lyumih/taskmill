@@ -4,6 +4,7 @@ export const taskMock: TaskData = {
   id: '0001',
   title: 'Создать Hello World приложение',
   type: 'Создание проекта',
+  processId: 'feature',
   status: 'Новая',
   priority: 'Средний',
   project: {

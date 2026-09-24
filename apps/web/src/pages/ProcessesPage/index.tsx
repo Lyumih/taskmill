@@ -1,153 +1,212 @@
 import { useState } from 'react'
-import { BranchesOutlined, PlusOutlined, RobotOutlined } from '@ant-design/icons'
+import { ArrowDownOutlined, ArrowUpOutlined, BranchesOutlined, DeleteOutlined, PlusOutlined, RobotOutlined } from '@ant-design/icons'
 import {
+  Alert,
   Button,
   Card,
+  Empty,
   Flex,
   Form,
   Input,
   Modal,
+  Select,
+  Space,
   Steps,
   Switch,
   Tabs,
   Tag,
   Typography,
 } from 'antd'
-import type { MockProject } from '../../../mock'
+import { getPluginDefinition } from '../../plugins'
+import type { ProcessBlock, ProcessDefinition } from '../../types/process'
+import type { Project } from '../../types/project'
 
 const { Text, Title } = Typography
 const { TextArea } = Input
 
-type WorkflowStage = {
-  title: string
-  detail: string
-  status: 'done' | 'current' | 'pending'
-}
-
-type Workflow = {
-  key: string
-  name: string
-  summary: string
-  trigger: string
-  agent: string
-  enabled: boolean
-  stages: WorkflowStage[]
-}
-
 type ProcessesPageProps = {
-  project: MockProject
+  project: Project
+  onUpdateProcess: (processId: string, patch: Partial<ProcessDefinition>) => void
 }
 
-const initialWorkflows: Workflow[] = [
-  {
-    key: 'feature',
-    name: 'Новая функция',
-    summary: 'От идеи до готового изменения с проверкой результата.',
-    trigger: 'Тип задачи: Feature',
-    agent: 'Feature Agent',
-    enabled: true,
-    stages: [
-      { title: 'Разобрать требования', detail: 'Уточнить цель, ограничения и критерии приёмки.', status: 'done' },
-      { title: 'Составить план', detail: 'Определить затрагиваемые модули и последовательность изменений.', status: 'current' },
-      { title: 'Реализовать', detail: 'Внести минимальные изменения и покрыть сценарии.', status: 'pending' },
-      { title: 'Проверить и подготовить итог', detail: 'Запустить проверки, описать результат и риски.', status: 'pending' },
-    ],
-  },
-  {
-    key: 'bugfix',
-    name: 'Исправление ошибки',
-    summary: 'Сначала подтверждаем причину, затем исправляем и проверяем регрессию.',
-    trigger: 'Тип задачи: Bugfix',
-    agent: 'Bugfix Agent',
-    enabled: true,
-    stages: [
-      { title: 'Воспроизвести проблему', detail: 'Зафиксировать входные условия и ожидаемое поведение.', status: 'done' },
-      { title: 'Найти первопричину', detail: 'Проследить путь данных и локализовать источник ошибки.', status: 'current' },
-      { title: 'Исправить и добавить проверку', detail: 'Закрыть причину, не маскируя симптом.', status: 'pending' },
-      { title: 'Проверить регрессию', detail: 'Запустить тесты и подтвердить исходный сценарий.', status: 'pending' },
-    ],
-  },
-  {
-    key: 'review',
-    name: 'Ревью изменений',
-    summary: 'Независимая проверка логики, рисков и соответствия договорённостям.',
-    trigger: 'Команда: /taskmill review',
-    agent: 'Review Agent',
-    enabled: true,
-    stages: [
-      { title: 'Изучить diff и контекст', detail: 'Сопоставить изменения с задачей и существующими контрактами.', status: 'done' },
-      { title: 'Проверить риски', detail: 'Найти регрессии, ошибки данных и пробелы тестирования.', status: 'current' },
-      { title: 'Сформировать замечания', detail: 'Приоритизировать находки и указать точное место проблемы.', status: 'pending' },
-    ],
-  },
-]
+function createId() {
+  return `block-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+}
 
-export function ProcessesPage({ project }: ProcessesPageProps) {
-  const [workflows, setWorkflows] = useState(initialWorkflows)
-  const [activeKey, setActiveKey] = useState('feature')
+export function ProcessesPage({ project, onUpdateProcess }: ProcessesPageProps) {
+  const [activeProcessId, setActiveProcessId] = useState(project.processes[0]?.id ?? '')
+  const [selectedPluginIds, setSelectedPluginIds] = useState<Record<string, string | undefined>>({})
   const [modalOpen, setModalOpen] = useState(false)
   const [form] = Form.useForm<{ title: string; detail: string }>()
-  const activeWorkflow = workflows.find((workflow) => workflow.key === activeKey) ?? workflows[0]
+  const activeProcess = project.processes.find((process) => process.id === activeProcessId) ?? project.processes[0]
+  const availablePlugins = project.plugins.filter((item) => item.enabled)
+
+  const updateProcessBlocks = (process: ProcessDefinition, blocks: ProcessBlock[]) => {
+    onUpdateProcess(process.id, { blocks })
+  }
+
+  const movePluginBlock = (process: ProcessDefinition, index: number, offset: number) => {
+    const targetIndex = index + offset
+    if (targetIndex < 0 || targetIndex >= process.blocks.length) return
+    const blocks = [...process.blocks]
+    const currentBlock = blocks[index]
+    blocks[index] = blocks[targetIndex]
+    blocks[targetIndex] = currentBlock
+    updateProcessBlocks(process, blocks)
+  }
+
+  const addPlugin = (process: ProcessDefinition) => {
+    const pluginId = selectedPluginIds[process.id]
+    if (!pluginId) return
+    const block: ProcessBlock = { id: createId(), pluginId, enabled: true }
+    updateProcessBlocks(process, [...process.blocks, block])
+    setSelectedPluginIds((current) => ({ ...current, [process.id]: undefined }))
+  }
 
   const addStage = (values: { title: string; detail: string }) => {
-    setWorkflows((current) => current.map((workflow) => workflow.key === activeKey
-      ? { ...workflow, stages: [...workflow.stages, { ...values, status: 'pending' }] }
-      : workflow))
+    if (!activeProcess) return
+    onUpdateProcess(activeProcess.id, {
+      stages: [...activeProcess.stages, { ...values, status: 'pending' }],
+    })
     setModalOpen(false)
     form.resetFields()
   }
 
-  if (!activeWorkflow) return null
+  if (!activeProcess) {
+    return <Empty description="Для проекта пока нет процессов." />
+  }
 
   return (
     <main>
       <Flex vertical gap="large">
         <Flex align="flex-start" justify="space-between" gap="middle" wrap="wrap">
           <Flex vertical gap="small">
-            <Title level={2} style={{ margin: 0 }}>Процессы агентов</Title>
-            <Text type="secondary">Настройте этапы, по которым агенты выполняют задачи проекта {project.name}.</Text>
+            <Title level={2} style={{ margin: 0 }}>Процессы проекта</Title>
+            <Text type="secondary">Комбинируйте блоки-элементы в workflow проекта {project.name}.</Text>
           </Flex>
-          <Tag icon={<BranchesOutlined />} color="blue">3 процесса</Tag>
+          <Tag icon={<BranchesOutlined />} color="blue">{project.processes.length} процесса</Tag>
         </Flex>
 
         <Card>
           <Tabs
-            activeKey={activeKey}
-            onChange={setActiveKey}
-            items={workflows.map((workflow) => ({
-              key: workflow.key,
-              label: workflow.name,
+            activeKey={activeProcess.id}
+            onChange={setActiveProcessId}
+            items={project.processes.map((process) => ({
+              key: process.id,
+              label: process.name,
               children: (
                 <Flex vertical gap="large">
+                  {process.placeholder && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      message="Процесс пока заглушка"
+                      description="Его тип и состав блоков настроены, содержание этапов предстоит определить."
+                    />
+                  )}
+
                   <Flex align="flex-start" justify="space-between" gap="middle" wrap="wrap">
                     <Flex vertical gap="small">
                       <Flex align="center" gap="small" wrap="wrap">
-                        <Title level={4} style={{ margin: 0 }}>{workflow.name}</Title>
-                        <Tag color={workflow.enabled ? 'success' : 'default'}>{workflow.enabled ? 'Активен' : 'На паузе'}</Tag>
+                        <Title level={4} style={{ margin: 0 }}>{process.name}</Title>
+                        <Tag color={process.enabled ? 'success' : 'default'}>{process.enabled ? 'Доступен задачам' : 'Выключен'}</Tag>
+                        <Tag>{process.taskType}</Tag>
                       </Flex>
-                      <Text type="secondary">{workflow.summary}</Text>
+                      <Text type="secondary">{process.summary}</Text>
                     </Flex>
                     <Flex align="center" gap="small">
-                      <Text>{workflow.enabled ? 'Включён' : 'Выключен'}</Text>
+                      <Text>{process.enabled ? 'Включён' : 'Выключен'}</Text>
                       <Switch
-                        aria-label={`Включить процесс «${workflow.name}»`}
-                        checked={workflow.enabled}
-                        onChange={(enabled) => setWorkflows((current) => current.map((item) => item.key === workflow.key ? { ...item, enabled } : item))}
+                        aria-label={`Включить процесс «${process.name}»`}
+                        checked={process.enabled}
+                        onChange={(enabled) => onUpdateProcess(process.id, { enabled })}
                       />
                     </Flex>
                   </Flex>
 
                   <Flex gap="small" wrap="wrap">
-                    <Tag>Запуск: {workflow.trigger}</Tag>
-                    <Tag icon={<RobotOutlined />}>Агент: {workflow.agent}</Tag>
-                    <Tag>{workflow.stages.length} этапа</Tag>
+                    <Tag>Запуск: {process.trigger}</Tag>
+                    <Tag icon={<RobotOutlined />}>Агент: {process.agent}</Tag>
+                    <Tag>{process.stages.length} этапа</Tag>
                   </Flex>
 
-                  <Card size="small" title="Последовательность этапов" extra={<Button icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalOpen(true) }}>Добавить этап</Button>}>
+                  <Card
+                    size="small"
+                    title="Состав процесса"
+                    extra={(
+                      <Space.Compact>
+                        <Select
+                          aria-label={`Плагин для процесса ${process.name}`}
+                          placeholder="Выберите блок"
+                          value={selectedPluginIds[process.id]}
+                          options={availablePlugins.map((item) => ({
+                            value: item.pluginId,
+                            label: getPluginDefinition(item.pluginId)?.title ?? item.pluginId,
+                          }))}
+                          onChange={(pluginId) => setSelectedPluginIds((current) => ({ ...current, [process.id]: pluginId }))}
+                          style={{ minWidth: 180 }}
+                        />
+                        <Button
+                          aria-label={`Добавить блок в процесс ${process.name}`}
+                          icon={<PlusOutlined />}
+                          disabled={!selectedPluginIds[process.id]}
+                          onClick={() => addPlugin(process)}
+                        />
+                      </Space.Compact>
+                    )}
+                  >
+                    <Flex vertical gap="small">
+                      {process.blocks.map((block, index) => {
+                        const plugin = getPluginDefinition(block.pluginId)
+                        return (
+                          <Flex key={block.id} align="center" justify="space-between" gap="middle" wrap="wrap">
+                            <Flex align="center" gap="small" wrap="wrap">
+                              <Tag>{index + 1}</Tag>
+                              <Text strong>{plugin?.title ?? `Неизвестный плагин: ${block.pluginId}`}</Text>
+                              {!project.plugins.find((item) => item.pluginId === block.pluginId)?.enabled && (
+                                <Tag color="warning">Плагин выключен в проекте</Tag>
+                              )}
+                            </Flex>
+                            <Space>
+                              <Button
+                                aria-label={`Переместить блок ${plugin?.title ?? block.pluginId} выше`}
+                                icon={<ArrowUpOutlined />}
+                                disabled={index === 0}
+                                onClick={() => movePluginBlock(process, index, -1)}
+                              />
+                              <Button
+                                aria-label={`Переместить блок ${plugin?.title ?? block.pluginId} ниже`}
+                                icon={<ArrowDownOutlined />}
+                                disabled={index === process.blocks.length - 1}
+                                onClick={() => movePluginBlock(process, index, 1)}
+                              />
+                              <Switch
+                                aria-label={`Использовать блок ${plugin?.title ?? block.pluginId} в процессе ${process.name}`}
+                                checked={block.enabled}
+                                onChange={(enabled) => updateProcessBlocks(process, process.blocks.map((item) => item.id === block.id ? { ...item, enabled } : item))}
+                              />
+                              <Button
+                                aria-label={`Удалить блок ${plugin?.title ?? block.pluginId} из процесса ${process.name}`}
+                                icon={<DeleteOutlined />}
+                                onClick={() => updateProcessBlocks(process, process.blocks.filter((item) => item.id !== block.id))}
+                              />
+                            </Space>
+                          </Flex>
+                        )
+                      })}
+                      {!process.blocks.length && <Text type="secondary">Добавьте плагины, чтобы составить процесс.</Text>}
+                    </Flex>
+                  </Card>
+
+                  <Card
+                    size="small"
+                    title="Этапы процесса"
+                    extra={<Button icon={<PlusOutlined />} onClick={() => { form.resetFields(); setActiveProcessId(process.id); setModalOpen(true) }}>Добавить этап</Button>}
+                  >
                     <Steps
                       orientation="vertical"
-                      current={Math.max(0, workflow.stages.findIndex((stage) => stage.status === 'current'))}
-                      items={workflow.stages.map((stage) => ({
+                      current={Math.max(0, process.stages.findIndex((stage) => stage.status === 'current'))}
+                      items={process.stages.map((stage) => ({
                         title: stage.title,
                         description: stage.detail,
                         status: stage.status === 'done' ? 'finish' : stage.status === 'current' ? 'process' : 'wait',
@@ -156,8 +215,8 @@ export function ProcessesPage({ project }: ProcessesPageProps) {
                   </Card>
 
                   <Flex align="center" gap="small" wrap="wrap">
-                    <Text type="secondary">Применяется к задачам в проекте {project.name}</Text>
-                    <Tag color="processing">Демонстрационный сценарий</Tag>
+                    <Text type="secondary">Задачи выбирают один включённый процесс и получают его активные блоки.</Text>
+                    <Tag color="processing">{process.placeholder ? 'Заглушка' : 'Feature workflow'}</Tag>
                   </Flex>
                 </Flex>
               ),
@@ -168,7 +227,7 @@ export function ProcessesPage({ project }: ProcessesPageProps) {
 
       <Modal
         open={modalOpen}
-        title={`Новый этап: ${activeWorkflow.name}`}
+        title={`Новый этап: ${activeProcess.name}`}
         okText="Добавить этап"
         cancelText="Отмена"
         onCancel={() => setModalOpen(false)}

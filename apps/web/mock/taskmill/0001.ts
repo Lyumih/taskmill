@@ -4,6 +4,7 @@ export const taskMock: TaskData = {
   id: '0001',
   title: 'Подготовить рабочее пространство Taskmill',
   type: 'Новая функциональность',
+  processId: 'feature',
   status: 'В работе',
   priority: 'Высокий',
   project: {

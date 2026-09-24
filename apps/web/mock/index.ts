@@ -2,43 +2,39 @@ import { taskMock as taskmillTask0001 } from './taskmill/0001'
 import { taskMock as taskmillTask0002 } from './taskmill/0002'
 import { taskMock as crossTask0001 } from './cross/0001'
 import { taskMock as exampleTask0001 } from './example/0001'
-import type { TaskData } from '../src/types/task'
+import { getPluginDefaultValues, pluginDefinitions } from '../src/plugins'
+import type { Project, ProjectPluginConfig } from '../src/types/project'
+import { createDefaultProcesses } from './processes'
 
-export type MockProject = {
-  id: string
-  name: string
-  tasks: TaskData[]
-  analytics: {
-    provider: 'Matomo'
-    state: 'mock' | 'notConnected'
-    period?: string
-    visits?: number
-    note: string
-  }
-  testing: {
-    checks: Array<{
-      name: string
-      command?: string
-      state: 'passed' | 'notConfigured' | 'notRun'
-      details: string
-    }>
-  }
-  mockData: {
-    directory: string
-    note: string
-  }
-  server: {
-    state: 'notImplemented'
-    description: string
-    plannedResponsibilities: string[]
-  }
+export type MockProject = Project
+
+function createDefaultPlugins(projectId: string): ProjectPluginConfig[] {
+  return pluginDefinitions.map((plugin) => {
+    const values = getPluginDefaultValues(plugin.id)
+    if (plugin.id === 'project-context') {
+      if (projectId === 'taskmill') {
+        values.product = 'Taskmill помогает команде разбирать задачи и готовить работу для ИИ-агентов.'
+        values.stack = ['React', 'TypeScript', 'Vite', 'Ant Design']
+        values.references = ['https://github.com/Lyumih/taskmill']
+      } else if (projectId === 'cross') {
+        values.product = 'Создать игру в крестики-нолики на React для двух игроков на одном устройстве.'
+        values.stack = ['React']
+      } else if (projectId === 'example') {
+        values.product = 'Создать минимальное приложение, которое выводит Hello, world!'
+      }
+    }
+
+    return { pluginId: plugin.id, enabled: true, values, comment: '' }
+  })
 }
 
-export const mockProjects: MockProject[] = [
+export const mockProjects: Project[] = [
   {
     id: 'taskmill',
     name: 'Taskmill',
     tasks: [taskmillTask0001, taskmillTask0002],
+    plugins: createDefaultPlugins('taskmill'),
+    processes: createDefaultProcesses(),
     analytics: {
       provider: 'Matomo',
       state: 'mock',
@@ -86,6 +82,8 @@ export const mockProjects: MockProject[] = [
     id: 'cross',
     name: 'cross',
     tasks: [crossTask0001],
+    plugins: createDefaultPlugins('cross'),
+    processes: createDefaultProcesses(),
     analytics: {
       provider: 'Matomo',
       state: 'notConnected',
@@ -114,6 +112,8 @@ export const mockProjects: MockProject[] = [
     id: 'example',
     name: 'Example',
     tasks: [exampleTask0001],
+    plugins: createDefaultPlugins('example'),
+    processes: createDefaultProcesses(),
     analytics: {
       provider: 'Matomo',
       state: 'notConnected',

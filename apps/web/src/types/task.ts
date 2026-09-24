@@ -2,6 +2,8 @@ export interface Task {
   id: string
   title: string
   type: string
+  processId: string
+  pluginData: Record<string, Record<string, Partial<import('../plugins/types').PluginValues>>>
   status: string
   priority: string
   project: {
@@ -146,4 +148,6 @@ export type DeepPartial<T> = T extends readonly (infer Item)[]
     ? { [Key in keyof T]?: DeepPartial<T[Key]> }
     : T
 
-export type TaskData = DeepPartial<Task>
+export type TaskData = Omit<DeepPartial<Task>, 'pluginData'> & {
+  pluginData?: Task['pluginData']
+}

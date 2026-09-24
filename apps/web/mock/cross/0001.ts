@@ -3,6 +3,7 @@ import type { TaskData } from '../../src/types/task'
 export const taskMock: TaskData = {
   id: '0001',
   title: 'Крестики-нолики',
+  processId: 'feature',
   status: 'Новая',
   project: {
     name: 'cross',

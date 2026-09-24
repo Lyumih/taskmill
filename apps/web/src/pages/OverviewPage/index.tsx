@@ -7,7 +7,6 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons'
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   Alert,
   Avatar,
@@ -20,8 +19,9 @@ import {
   message,
   Progress,
   Row,
+  Select,
   Space,
-  Spin,
+  Steps,
   Statistic,
   Tag,
   Typography,
@@ -30,9 +30,12 @@ import { AgentPlan } from '../../components/AgentPlan'
 import { ApiErrorHandling } from '../../components/ApiErrorHandling'
 import { ExpectedComponents } from '../../components/ExpectedComponents'
 import { PermissionsFlags } from '../../components/PermissionsFlags'
+import { PluginFieldsEditor } from '../../components/PluginFieldsEditor'
 import { ProjectContext } from '../../components/ProjectContext'
-import { getTaskMock } from '../../../mock'
-import type { MockProject } from '../../../mock'
+import { getPluginDefinition, getPluginDefaultValues, mergePluginValues } from '../../plugins'
+import type { PluginFieldValue } from '../../plugins/types'
+import type { Project } from '../../types/project'
+import type { TaskData } from '../../types/task'
 import { buildTaskContext } from '../../utils/buildTaskContext'
 
 const { Paragraph, Text, Title } = Typography
@@ -49,20 +52,46 @@ function formatDate(value?: string) {
 }
 
 type OverviewPageProps = {
-  project: MockProject
+  project: Project
   projectId: string
   taskId: string
+  task: TaskData
+  onUpdateTask: (patch: Partial<TaskData>) => void
 }
 
-export function OverviewPage({ project, projectId, taskId }: OverviewPageProps) {
+export function OverviewPage({ project, projectId, taskId, task, onUpdateTask }: OverviewPageProps) {
   const taskKey = `${projectId}:${taskId}`
   const [editDraft, setEditDraft] = useState({ taskKey, value: '' })
   const [messageApi, contextHolder] = message.useMessage()
   const editContext = editDraft.taskKey === taskKey ? editDraft.value : ''
-  const taskQuery = useQuery({
-    queryKey: ['task', projectId, taskId],
-    queryFn: () => getTaskMock(projectId, taskId),
-  })
+  const process = project.processes.find((item) => item.id === task.processId)
+
+  const selectProcess = (processId: string) => {
+    const nextProcess = project.processes.find((item) => item.id === processId)
+    if (!nextProcess) return
+    onUpdateTask({
+      processId,
+      type: nextProcess.taskType,
+      workflow: {
+        name: nextProcess.name,
+        currentStep: 1,
+        totalSteps: nextProcess.stages.length,
+        questions: [],
+      },
+    })
+  }
+
+  const updatePluginValue = (processId: string, blockId: string, fieldId: string, value: PluginFieldValue) => {
+    onUpdateTask({
+      pluginData: {
+        ...task.pluginData,
+        [processId]: {
+          ...task.pluginData?.[processId],
+          [blockId]: { ...task.pluginData?.[processId]?.[blockId], [fieldId]: value },
+        },
+      },
+    })
+  }
 
   const copyPrompt = async (prompt: string, description: string) => {
     try {
@@ -73,15 +102,6 @@ export function OverviewPage({ project, projectId, taskId }: OverviewPageProps) 
     }
   }
 
-  if (taskQuery.isPending) {
-    return <Flex justify="center"><Spin size="large" /></Flex>
-  }
-
-  if (taskQuery.isError) {
-    return <Alert description={taskQuery.error.message} message="Не удалось загрузить задачу" type="error" />
-  }
-
-  const task = taskQuery.data
   const workflow = task.workflow
   const taskContext = buildTaskContext(project, task)
 
@@ -89,6 +109,66 @@ export function OverviewPage({ project, projectId, taskId }: OverviewPageProps) 
     <main>
       {contextHolder}
       <Flex vertical gap="large">
+        <Card
+          title="Процесс задачи"
+          extra={(
+            <Select
+              aria-label="Выбрать процесс для задачи"
+              placeholder="Выберите процесс"
+              value={process?.id}
+              options={project.processes.map((item) => ({
+                value: item.id,
+                label: `${item.name}${item.placeholder ? ' · заглушка' : ''}`,
+                disabled: !item.enabled,
+              }))}
+              onChange={selectProcess}
+              style={{ minWidth: 220 }}
+            />
+          )}
+        >
+          {process ? (
+            <Flex vertical gap="middle">
+              <Flex align="center" gap="small" wrap="wrap">
+                <Text strong>{process.name}</Text>
+                <Tag>{process.taskType}</Tag>
+                {process.placeholder && <Tag color="warning">Процесс пока заглушка</Tag>}
+                <Text type="secondary">{process.summary}</Text>
+              </Flex>
+              <Steps
+                size="small"
+                current={Math.max(0, Math.min((task.workflow?.currentStep ?? 1) - 1, process.stages.length - 1))}
+                items={process.stages.map((stage) => ({ title: stage.title, description: stage.detail }))}
+              />
+              <Flex vertical gap="middle">
+                {process.blocks.filter((block) => block.enabled).map((block) => {
+                  const plugin = getPluginDefinition(block.pluginId)
+                  const projectPlugin = project.plugins.find((item) => item.pluginId === block.pluginId)
+                  if (!plugin) return <Alert key={block.id} type="error" showIcon message={`Плагин ${block.pluginId} не найден`} />
+                  if (!projectPlugin?.enabled) {
+                    return <Alert key={block.id} type="warning" showIcon message={`${plugin.title} выключен в настройках проекта`} />
+                  }
+
+                  return (
+                    <Card key={block.id} size="small" title={plugin.title}>
+                      <PluginFieldsEditor
+                        plugin={plugin}
+                        values={mergePluginValues(
+                          projectPlugin.values ?? getPluginDefaultValues(plugin.id),
+                          task.pluginData?.[process.id]?.[block.id],
+                        )}
+                        onChange={(fieldId, value) => updatePluginValue(process.id, block.id, fieldId, value)}
+                      />
+                    </Card>
+                  )
+                })}
+                {!process.blocks.some((block) => block.enabled) && <Text type="secondary">В выбранном процессе нет активных блоков.</Text>}
+              </Flex>
+            </Flex>
+          ) : (
+            <Text type="secondary">Выберите один из процессов проекта, чтобы заполнить его блоки.</Text>
+          )}
+        </Card>
+
         <Card title="Команды для агента">
           <Flex vertical gap="middle">
             <Space wrap>
