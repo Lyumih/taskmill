@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Taskmill workspace configuration",
+  "type": "object",
+  "required": ["schemaVersion", "project", "processes"],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 1 },
+    "schemaVersion": { "const": 1 },
+    "project": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+        "name": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "processes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/process" }
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/projectPlugin" }
+    }
+  },
+  "definitions": {
+    "process": {
+      "type": "object",
+      "required": ["id", "name", "summary", "taskType", "trigger", "agent", "enabled", "placeholder", "stages", "blocks"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "summary": { "type": "string" },
+        "taskType": { "type": "string", "minLength": 1 },
+        "trigger": { "type": "string" },
+        "agent": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "placeholder": { "type": "boolean" },
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["title", "detail", "status"],
+            "properties": {
+              "title": { "type": "string" },
+              "detail": { "type": "string" },
+              "status": { "enum": ["done", "current", "pending"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "pluginId", "enabled"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "pluginId": { "type": "string", "minLength": 1 },
+              "enabled": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectPlugin": {
+      "type": "object",
+      "required": ["pluginId", "enabled", "values", "comment"],
+      "properties": {
+        "pluginId": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean" },
+        "values": { "$ref": "#/definitions/jsonObject" },
+        "comment": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "jsonObject": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/jsonValue" }
+    },
+    "jsonValue": {
+      "anyOf": [
+        { "type": ["string", "number", "boolean", "null"] },
+        { "type": "array", "items": { "$ref": "#/definitions/jsonValue" } },
+        { "$ref": "#/definitions/jsonObject" }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

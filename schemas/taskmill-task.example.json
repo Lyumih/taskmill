@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "task": {
+    "id": "EF-123",
+    "title": "Добавить фильтр задач",
+    "type": "Feature",
+    "processId": "feature",
+    "status": "Новая",
+    "priority": "Средний",
+    "project": {
+      "name": "EF Front Monorepo",
+      "repository": ""
+    },
+    "description": "Добавить фильтрацию списка по статусу.",
+    "pluginData": {
+      "feature": {
+        "agent-plan": {
+          "summary": "Добавить фильтр и проверить состояния списка.",
+          "progress": 0,
+          "steps": [
+            {
+              "title": "Разобрать текущий список задач",
+              "detail": "Найти точку формирования списка и доступные статусы.",
+              "status": "pending"
+            },
+            {
+              "title": "Реализовать фильтрацию",
+              "detail": "Добавить фильтр и проверить пустой результат.",
+              "status": "pending"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

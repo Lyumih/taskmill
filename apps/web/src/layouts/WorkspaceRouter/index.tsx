@@ -1,10 +1,11 @@
 import { Empty } from 'antd'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useRoutes } from 'react-router'
 import { mockProjects } from '../../../mock'
 import type { ProcessDefinition } from '../../types/process'
 import type { Project, ProjectPluginConfig } from '../../types/project'
 import type { TaskData } from '../../types/task'
+import { TaskmillDirectoryWorkspace } from '../../utils/taskmillWorkspace'
 import { AppLayout } from '../AppLayout'
 import type { AppPage } from '../AppLayout'
 import { BlocksPage } from '../../pages/BlocksPage'
@@ -49,10 +50,121 @@ export function WorkspaceRouter() {
   const navigate = useNavigate()
   const location = useLocation()
   const [projects, setProjects] = useState<Project[]>(mockProjects)
+  const projectsRef = useRef<Project[]>(mockProjects)
+  const workspaceRef = useRef<TaskmillDirectoryWorkspace | null>(null)
+  const connectedProjectIdRef = useRef<string | null>(null)
+  const pendingSaveRef = useRef<Project | null>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const [connected, setConnected] = useState(false)
+  const [connectedProjectId, setConnectedProjectId] = useState<string | null>(null)
+  const [connectionLoading, setConnectionLoading] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
+  const [workspaceError, setWorkspaceError] = useState<string>()
   const [fallbackSelection, setFallbackSelection] = useState({
     projectId: defaultProject?.id ?? '',
     taskId: defaultTaskId,
   })
+
+  const replaceProjects = (nextProjects: Project[]) => {
+    projectsRef.current = nextProjects
+    setProjects(nextProjects)
+  }
+
+  const flushPendingSave = async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+
+    const project = pendingSaveRef.current
+    const workspace = workspaceRef.current
+    if (!project || !workspace) return true
+    pendingSaveRef.current = null
+    setSaveStatus('saving')
+
+    const operation = saveQueueRef.current.then(() => workspace.save(project))
+    saveQueueRef.current = operation.catch(() => undefined)
+    try {
+      await operation
+      setSaveStatus(pendingSaveRef.current ? 'pending' : 'saved')
+      setWorkspaceError(undefined)
+      return true
+    } catch (error) {
+      pendingSaveRef.current ??= project
+      setSaveStatus('error')
+      setWorkspaceError(error instanceof Error ? error.message : 'Не удалось сохранить файлы Taskmill.')
+      return false
+    }
+  }
+
+  const scheduleSave = (project: Project) => {
+    pendingSaveRef.current = project
+    setSaveStatus('pending')
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => void flushPendingSave(), 500)
+  }
+
+  const replaceConnectedProject = (project: Project) => {
+    const previousId = connectedProjectIdRef.current
+    connectedProjectIdRef.current = project.id
+    setConnectedProjectId(project.id)
+    replaceProjects([
+      ...projectsRef.current.filter((item) => item.id !== previousId && item.id !== project.id),
+      project,
+    ])
+    const taskId = project.tasks[0]?.id ?? ''
+    setFallbackSelection({ projectId: project.id, taskId })
+    navigate(taskId ? taskPath(project.id, taskId) : '/processes')
+  }
+
+  const connectWorkspace = async () => {
+    const pickPromise = TaskmillDirectoryWorkspace.pick()
+    setConnectionLoading(true)
+    setWorkspaceError(undefined)
+    try {
+      const workspace = await pickPromise
+      if (workspaceRef.current && !(await flushPendingSave())) return
+      await saveQueueRef.current
+      workspaceRef.current = workspace
+      setConnected(true)
+      setSaveStatus('idle')
+      replaceConnectedProject(workspace.project)
+    } catch (error) {
+      if (!(error instanceof DOMException) || error.name !== 'AbortError') {
+        setWorkspaceError(error instanceof Error ? error.message : 'Не удалось подключить папку .taskmill.')
+      }
+    } finally {
+      setConnectionLoading(false)
+    }
+  }
+
+  const refreshWorkspace = async () => {
+    const currentWorkspace = workspaceRef.current
+    if (!currentWorkspace) return
+
+    const saved = await flushPendingSave()
+    if (!saved && !window.confirm('Есть локальные изменения, которые не удалось сохранить. Обновление отбросит их. Продолжить?')) return
+    if (!saved) pendingSaveRef.current = null
+    await saveQueueRef.current
+
+    setWorkspaceError(undefined)
+    setConnectionLoading(true)
+    try {
+      const refreshedWorkspace = await currentWorkspace.refresh()
+      workspaceRef.current = refreshedWorkspace
+      setSaveStatus('idle')
+      replaceConnectedProject(refreshedWorkspace.project)
+    } catch (error) {
+      setWorkspaceError(error instanceof Error ? error.message : 'Не удалось обновить данные из папки .taskmill.')
+    } finally {
+      setConnectionLoading(false)
+    }
+  }
+
+  useEffect(() => () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+  }, [])
   const route = parseTaskRoute(location.pathname)
   const routeProject = route ? projects.find((project) => project.id === route.projectId) : undefined
   const routeTaskId = route ? findTaskId(projects, route.projectId, route.taskSegment) : undefined
@@ -73,7 +185,14 @@ export function WorkspaceRouter() {
     : defaultTaskPath
 
   const updateProject = (projectId: string, update: (project: Project) => Project) => {
-    setProjects((current) => current.map((project) => project.id === projectId ? update(project) : project))
+    let updatedProject: Project | undefined
+    const nextProjects = projectsRef.current.map((project) => {
+      if (project.id !== projectId) return project
+      updatedProject = update(project)
+      return updatedProject
+    })
+    replaceProjects(nextProjects)
+    if (updatedProject && projectId === connectedProjectIdRef.current) scheduleSave(updatedProject)
   }
 
   const updatePlugin = (projectId: string, pluginId: string, patch: Partial<ProjectPluginConfig>) => {
@@ -118,6 +237,7 @@ export function WorkspaceRouter() {
         <BlocksPage
           project={selectedProject}
           originalProject={mockProjects.find((project) => project.id === selectedProject.id) ?? selectedProject}
+          persisted={selectedProject.id === connectedProjectId}
           onUpdatePlugin={(pluginId, patch) => updatePlugin(selectedProject.id, pluginId, patch)}
         />
       ) : <Empty description="Проект не найден" />,
@@ -139,6 +259,7 @@ export function WorkspaceRouter() {
           projectId={routeProject.id}
           taskId={routeTaskId}
           task={routeTask}
+          persisted={routeProject.id === connectedProjectId}
           onUpdateTask={(patch) => updateTask(routeProject.id, routeTaskId, patch)}
         />
       ) : (
@@ -154,6 +275,12 @@ export function WorkspaceRouter() {
       selectedProjectId={selectedProjectId}
       selectedTaskId={selectedTaskId}
       activePage={activePage}
+      connected={connected}
+      connectionLoading={connectionLoading}
+      saveStatus={saveStatus}
+      workspaceError={workspaceError}
+      onConnect={() => void connectWorkspace()}
+      onRefresh={() => void refreshWorkspace()}
       onSelectTask={(taskId) => {
         if (selectedProject) {
           setFallbackSelection({ projectId: selectedProject.id, taskId })

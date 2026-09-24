@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Taskmill task file",
+  "type": "object",
+  "required": ["schemaVersion", "task"],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 1 },
+    "schemaVersion": { "const": 1 },
+    "task": {
+      "type": "object",
+      "required": ["id", "title", "type", "processId"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "processId": { "type": "string", "minLength": 1 },
+        "pluginData": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/pluginBlocks" }
+        },
+        "pluginNotes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/pluginNotesByBlock" }
+        },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "project": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "repository": { "type": "string" },
+            "branch": { "type": "string" },
+            "rootPath": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "jsonObject": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/jsonValue" }
+    },
+    "jsonValue": {
+      "anyOf": [
+        { "type": ["string", "number", "boolean", "null"] },
+        { "type": "array", "items": { "$ref": "#/definitions/jsonValue" } },
+        { "$ref": "#/definitions/jsonObject" }
+      ]
+    },
+    "pluginBlocks": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/jsonObject" }
+    },
+    "pluginNotesByBlock": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

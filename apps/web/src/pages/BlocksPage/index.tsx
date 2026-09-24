@@ -11,6 +11,7 @@ const { Text, Title } = Typography
 type BlocksPageProps = {
   project: Project
   originalProject: Project
+  persisted: boolean
   onUpdatePlugin: (pluginId: string, patch: Partial<ProjectPluginConfig>) => void
 }
 
@@ -47,7 +48,7 @@ function buildPluginEditPrompt(project: Project, originalProject: Project, plugi
   ].join('\n\n')
 }
 
-export function BlocksPage({ project, originalProject, onUpdatePlugin }: BlocksPageProps) {
+export function BlocksPage({ project, originalProject, persisted, onUpdatePlugin }: BlocksPageProps) {
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({})
   const [messageApi, contextHolder] = message.useMessage()
   const enabledCount = project.plugins.filter((item) => item.enabled).length
@@ -98,7 +99,7 @@ export function BlocksPage({ project, originalProject, onUpdatePlugin }: BlocksP
         <Flex gap="small" wrap="wrap">
           <Tag color="success">{enabledCount} доступны</Tag>
           <Tag>{linkedProcessCount} процессов используют блоки проекта</Tag>
-          <Tag color="default">Изменения хранятся в workspace до перезагрузки</Tag>
+          <Tag color={persisted ? 'success' : 'default'}>{persisted ? 'Конфигурация сохраняется в .taskmill/config.json' : 'Изменения хранятся в workspace до перезагрузки'}</Tag>
         </Flex>
 
         <Row gutter={[16, 16]}>

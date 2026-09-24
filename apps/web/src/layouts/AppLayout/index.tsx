@@ -3,10 +3,12 @@ import {
   AppstoreOutlined,
   BranchesOutlined,
   FileTextOutlined,
+  FolderOpenOutlined,
+  ReloadOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
-import { Avatar, Flex, Layout, Menu, Select, Tag, Typography } from 'antd'
-import type { MockProject } from '../../../mock'
+import { Avatar, Button, Flex, Layout, Menu, Select, Tag, Typography, Alert } from 'antd'
+import type { Project } from '../../types/project'
 
 const { Content, Header, Sider } = Layout
 const { Text } = Typography
@@ -14,10 +16,16 @@ const { Text } = Typography
 export type AppPage = 'task' | 'settings' | 'blocks' | 'processes'
 
 type AppLayoutProps = PropsWithChildren<{
-  projects: MockProject[]
+  projects: Project[]
   selectedProjectId: string
   selectedTaskId: string
   activePage: AppPage
+  connected: boolean
+  connectionLoading: boolean
+  saveStatus: 'idle' | 'pending' | 'saving' | 'saved' | 'error'
+  workspaceError?: string
+  onConnect: () => void
+  onRefresh: () => void
   onSelectProject: (projectId: string) => void
   onSelectTask: (taskId: string) => void
   onSelectPage: (page: AppPage) => void
@@ -28,6 +36,12 @@ export function AppLayout({
   selectedProjectId,
   selectedTaskId,
   activePage,
+  connected,
+  connectionLoading,
+  saveStatus,
+  workspaceError,
+  onConnect,
+  onRefresh,
   onSelectProject,
   onSelectTask,
   onSelectPage,
@@ -136,15 +150,31 @@ export function AppLayout({
       </Sider>
 
       <Layout>
-        <Header style={{ display: 'flex' }}>
-          <Flex align="center" justify="space-between" gap={16}>
+        <Header style={{ display: 'flex', height: 'auto', minHeight: 64, paddingBlock: 12, paddingInline: 16 }}>
+          <Flex align="center" justify="space-between" gap={16} wrap="wrap" style={{ width: '100%' }}>
             <Text>
               {selectedProject?.name ?? 'Проекты'} / {activePage === 'task' ? 'Разбор задачи' : activePage === 'settings' ? 'Настройки' : activePage === 'blocks' ? 'Блоки' : 'Процессы'}
             </Text>
-            <Tag>Папка не подключена</Tag>
+            <Flex align="center" gap="small" wrap="wrap">
+              <Tag color={connected ? 'success' : 'default'}>{connected ? 'Папка .taskmill подключена' : 'Папка не подключена'}</Tag>
+              {connected && saveStatus !== 'idle' && (
+                <Tag color={saveStatus === 'error' ? 'error' : saveStatus === 'saved' ? 'success' : 'processing'}>
+                  {saveStatus === 'pending' ? 'Ожидает сохранения' : saveStatus === 'saving' ? 'Сохранение…' : saveStatus === 'saved' ? 'Сохранено' : 'Ошибка сохранения'}
+                </Tag>
+              )}
+              <Button icon={<FolderOpenOutlined />} loading={connectionLoading} onClick={onConnect}>
+                Выбрать .taskmill
+              </Button>
+              {connected && <Button icon={<ReloadOutlined />} onClick={onRefresh}>Обновить</Button>}
+            </Flex>
           </Flex>
         </Header>
-        <Content style={{ padding: 16}}>{children}</Content>
+        <Content style={{ padding: 16 }}>
+          <Flex vertical gap="middle">
+            {workspaceError && <Alert type="error" showIcon message={workspaceError} />}
+            {children}
+          </Flex>
+        </Content>
       </Layout>
     </Layout>
   )

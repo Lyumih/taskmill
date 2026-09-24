@@ -37,10 +37,11 @@ type OverviewPageProps = {
   projectId: string
   taskId: string
   task: TaskData
+  persisted: boolean
   onUpdateTask: (patch: Partial<TaskData>) => void
 }
 
-export function OverviewPage({ project, projectId, taskId, task, onUpdateTask }: OverviewPageProps) {
+export function OverviewPage({ project, projectId, taskId, task, persisted, onUpdateTask }: OverviewPageProps) {
   const taskKey = `${projectId}:${taskId}`
   const [editDraft, setEditDraft] = useState({ taskKey, value: '' })
   const [allBlocksExpanded, setAllBlocksExpanded] = useState(false)
@@ -178,7 +179,7 @@ export function OverviewPage({ project, projectId, taskId, task, onUpdateTask }:
             <Flex align="center" justify="space-between" gap="small" wrap="wrap">
               <Space wrap>
                 <Text type="secondary">{project.name} / задача {task.id ?? '—'}</Text>
-                <Tag color="gold">Демо</Tag>
+                <Tag color={persisted ? 'green' : 'gold'}>{persisted ? 'JSON .taskmill' : 'Демо'}</Tag>
               </Space>
               <Space wrap>
                 {task.status && <Tag color="processing">{task.status}</Tag>}
