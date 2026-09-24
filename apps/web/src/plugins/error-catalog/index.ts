@@ -4,6 +4,7 @@ export const errorCatalogPlugin: PluginDefinition = {
   id: 'error-catalog',
   title: 'Ошибки и замечания',
   description: 'Типизированные записи для классификации ошибок проекта.',
+  category: 'technical',
   fields: [
     {
       id: 'errors',

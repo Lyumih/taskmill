@@ -1,16 +1,38 @@
 import { BranchesOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { useState } from 'react'
-import { Alert, Button, Card, Collapse, Flex, Input, message, Select, Space, Steps, Tag, Typography } from 'antd'
+import {
+  Alert,
+  Button,
+  Card,
+  Collapse,
+  Col,
+  Flex,
+  Input,
+  message,
+  Row,
+  Select,
+  Space,
+  Steps,
+  Tabs,
+  Tag,
+  Typography,
+} from 'antd'
 import { PluginFieldsEditor } from '../../components/PluginFieldsEditor'
-import { PluginFieldsView } from '../../components/PluginFieldsView'
 import { ProjectContext } from '../../components/ProjectContext'
 import { getPluginDefinition, getPluginDefaultValues, mergePluginValues } from '../../plugins'
-import type { PluginFieldValue } from '../../plugins/types'
+import type { PluginCategory, PluginFieldValue } from '../../plugins/types'
 import type { Project } from '../../types/project'
 import type { TaskData } from '../../types/task'
 import { buildTaskContext } from '../../utils/buildTaskContext'
 
 const { Paragraph, Text, Title } = Typography
+
+const pluginGroups: Array<{ key: PluginCategory; label: string }> = [
+  { key: 'planning', label: 'Планирование' },
+  { key: 'delivery', label: 'Реализация' },
+  { key: 'context', label: 'Контекст' },
+  { key: 'technical', label: 'Технические детали' },
+]
 
 type OverviewPageProps = {
   project: Project
@@ -27,14 +49,63 @@ export function OverviewPage({ project, projectId, taskId, task, onUpdateTask }:
   const editContext = editDraft.taskKey === taskKey ? editDraft.value : ''
   const process = project.processes.find((item) => item.id === task.processId)
   const workflowBlock = process?.blocks.find((block) => block.pluginId === 'task-workflow' && block.enabled)
-  const workflowValues = workflowBlock
+  const workflowValues = workflowBlock && process
     ? mergePluginValues(
         project.plugins.find((item) => item.pluginId === workflowBlock.pluginId)?.values ?? getPluginDefaultValues(workflowBlock.pluginId),
-        task.pluginData?.[process?.id ?? '']?.[workflowBlock.id],
+        task.pluginData?.[process.id]?.[workflowBlock.id],
       )
     : undefined
   const currentStep = typeof workflowValues?.currentStep === 'number' ? workflowValues.currentStep : 1
   const taskContext = buildTaskContext(project, task)
+  const processBlocks = process?.blocks.flatMap((block) => {
+    if (!block.enabled) return []
+    const plugin = getPluginDefinition(block.pluginId)
+    return plugin?.projectView ? [] : [{ block, plugin }]
+  }) ?? []
+  const tabs = pluginGroups.flatMap((group) => {
+    const entries = processBlocks.filter(({ plugin }) => (plugin?.category ?? 'technical') === group.key)
+    if (!entries.length) return []
+
+    return [{
+      key: group.key,
+      label: (
+        <Flex align="center" gap="small">
+          <Text>{group.label}</Text>
+          <Text type="secondary">{entries.length}</Text>
+        </Flex>
+      ),
+      children: (
+        <Collapse
+          key={`${process?.id}-${group.key}`}
+          accordion
+          size="small"
+          items={entries.map(({ block, plugin }) => {
+            const projectPlugin = project.plugins.find((item) => item.pluginId === block.pluginId)
+            return {
+              key: block.id,
+              label: plugin?.title ?? `Неизвестный плагин: ${block.pluginId}`,
+              children: !plugin ? (
+                <Alert type="error" showIcon message={`Плагин ${block.pluginId} не найден`} />
+              ) : !projectPlugin?.enabled ? (
+                <Alert type="warning" showIcon message={`${plugin.title} выключен в настройках проекта`} />
+              ) : (
+                <PluginFieldsEditor
+                  plugin={plugin}
+                  values={mergePluginValues(
+                    projectPlugin.values ?? getPluginDefaultValues(plugin.id),
+                    task.pluginData?.[process?.id ?? '']?.[block.id],
+                  )}
+                  onChange={(fieldId, value) => {
+                    if (process) updatePluginValue(process.id, block.id, fieldId, value)
+                  }}
+                />
+              ),
+            }
+          })}
+        />
+      ),
+    }]
+  })
 
   const selectProcess = (processId: string) => {
     const nextProcess = project.processes.find((item) => item.id === processId)
@@ -62,114 +133,16 @@ export function OverviewPage({ project, projectId, taskId, task, onUpdateTask }:
     }
   }
 
-  const processBlocks = process?.blocks.filter((block) => block.enabled && !getPluginDefinition(block.pluginId)?.projectView) ?? []
-
   return (
     <main>
       {contextHolder}
-      <Flex vertical gap="large">
-        <Card
-          title="Процесс задачи"
-          extra={(
-            <Select
-              aria-label="Выбрать процесс для задачи"
-              placeholder="Выберите процесс"
-              value={process?.id}
-              options={project.processes.map((item) => ({
-                value: item.id,
-                label: `${item.name}${item.placeholder ? ' · заглушка' : ''}`,
-                disabled: !item.enabled,
-              }))}
-              onChange={selectProcess}
-              style={{ minWidth: 220 }}
-            />
-          )}
-        >
-          {process ? (
-            <Flex vertical gap="middle">
-              <Flex align="center" gap="small" wrap="wrap">
-                <Text strong>{process.name}</Text>
-                <Tag>{process.taskType}</Tag>
-                {process.placeholder && <Tag color="warning">Процесс пока заглушка</Tag>}
-                <Text type="secondary">{process.summary}</Text>
-              </Flex>
-              <Steps
-                size="small"
-                current={Math.max(0, Math.min(currentStep - 1, process.stages.length - 1))}
-                items={process.stages.map((stage) => ({ title: stage.title, description: stage.detail }))}
-              />
-              <Card size="small" title="Блоки процесса">
-                {processBlocks.length ? (
-                  <Collapse
-                    items={processBlocks.map((block) => {
-                      const plugin = getPluginDefinition(block.pluginId)
-                      const projectPlugin = project.plugins.find((item) => item.pluginId === block.pluginId)
-                      return {
-                        key: block.id,
-                        label: plugin?.title ?? `Неизвестный плагин: ${block.pluginId}`,
-                        children: !plugin ? (
-                          <Alert type="error" showIcon message={`Плагин ${block.pluginId} не найден`} />
-                        ) : !projectPlugin?.enabled ? (
-                          <Alert type="warning" showIcon message={`${plugin.title} выключен в настройках проекта`} />
-                        ) : plugin.projectView ? (
-                          <PluginFieldsView plugin={plugin} values={projectPlugin.values} />
-                        ) : (
-                          <PluginFieldsEditor
-                            plugin={plugin}
-                            values={mergePluginValues(
-                              projectPlugin.values ?? getPluginDefaultValues(plugin.id),
-                              task.pluginData?.[process.id]?.[block.id],
-                            )}
-                            onChange={(fieldId, value) => updatePluginValue(process.id, block.id, fieldId, value)}
-                          />
-                        ),
-                      }
-                    })}
-                  />
-                ) : <Text type="secondary">В выбранном процессе пока нет активных блоков.</Text>}
-              </Card>
-            </Flex>
-          ) : (
-            <Text type="secondary">Выберите один из процессов проекта, чтобы увидеть его этапы и блоки.</Text>
-          )}
-        </Card>
-
-        <Card title="Команды для агента">
-          <Flex vertical gap="middle">
-            <Space wrap>
-              <Button onClick={() => void copyPrompt('/taskmill update', 'Команда обновления')}>
-                Обновить
-              </Button>
-              <Button
-                disabled={!editContext.trim()}
-                onClick={() => void copyPrompt(`/taskmill edit ${editContext.trim()}`, 'Команда исправления')}
-                type="primary"
-              >
-                Исправить
-              </Button>
-              <Button onClick={() => void copyPrompt(taskContext, 'Контекст задачи')}>
-                Скопировать контекст
-              </Button>
-            </Space>
-            <Flex vertical gap="small">
-              <Text strong>Изменения для агента</Text>
-              <Input.TextArea
-                aria-label="Изменения для команды исправления"
-                autoSize={{ minRows: 2, maxRows: 6 }}
-                onChange={(event) => setEditDraft({ taskKey, value: event.target.value })}
-                placeholder="Опишите, что нужно изменить в задаче или проекте. Затем нажмите «Исправить»."
-                value={editContext}
-              />
-            </Flex>
-          </Flex>
-        </Card>
-
-        <Card>
-          <Flex vertical gap="middle">
-            <Flex align="center" justify="space-between" wrap="wrap">
+      <Flex vertical gap="middle">
+        <Card size="small">
+          <Flex vertical gap="small">
+            <Flex align="center" justify="space-between" gap="small" wrap="wrap">
               <Space wrap>
                 <Text type="secondary">{project.name} / задача {task.id ?? '—'}</Text>
-                <Tag color="gold">Демонстрационные данные</Tag>
+                <Tag color="gold">Демо</Tag>
               </Space>
               <Space wrap>
                 {task.status && <Tag color="processing">{task.status}</Tag>}
@@ -177,10 +150,8 @@ export function OverviewPage({ project, projectId, taskId, task, onUpdateTask }:
                 {task.priority && <Tag color="volcano">{task.priority}</Tag>}
               </Space>
             </Flex>
-
-            <Title level={2}>{task.title ?? 'Новая задача'}</Title>
+            <Title level={3}>{task.title ?? 'Новая задача'}</Title>
             {task.description && <Paragraph>{task.description}</Paragraph>}
-
             <Space wrap>
               {task.project?.name && <Text><FolderOpenOutlined /> {task.project.name}</Text>}
               {task.project?.branch && <Text><BranchesOutlined /> {task.project.branch}</Text>}
@@ -189,7 +160,101 @@ export function OverviewPage({ project, projectId, taskId, task, onUpdateTask }:
           </Flex>
         </Card>
 
-        <ProjectContext project={project} />
+        <Row gutter={[16, 16]}>
+          <Col xs={24} xl={16}>
+            <Flex vertical gap="middle">
+              <Card size="small" title="Процесс задачи">
+                {process ? (
+                  <Flex vertical gap="middle">
+                    <Flex align="center" justify="space-between" gap="middle" wrap="wrap">
+                      <Flex vertical gap="small">
+                        <Flex align="center" gap="small" wrap="wrap">
+                          <Text strong>{process.name}</Text>
+                          <Tag>{process.taskType}</Tag>
+                          {process.placeholder && <Tag color="warning">Заглушка</Tag>}
+                        </Flex>
+                        <Text type="secondary">{process.summary}</Text>
+                      </Flex>
+                      <Select
+                        aria-label="Выбрать процесс для задачи"
+                        value={process.id}
+                        options={project.processes.map((item) => ({
+                          value: item.id,
+                          label: `${item.name}${item.placeholder ? ' · заглушка' : ''}`,
+                          disabled: !item.enabled,
+                        }))}
+                        onChange={selectProcess}
+                      />
+                    </Flex>
+                    <Steps
+                      size="small"
+                      current={Math.max(0, Math.min(currentStep - 1, process.stages.length - 1))}
+                      items={process.stages.map((stage) => ({ title: stage.title, description: stage.detail }))}
+                    />
+                  </Flex>
+                ) : (
+                  <Flex align="center" gap="middle" wrap="wrap">
+                    <Text type="secondary">У задачи пока не выбран процесс.</Text>
+                    <Select
+                      aria-label="Выбрать процесс для задачи"
+                      placeholder="Выберите процесс"
+                      options={project.processes.filter((item) => item.enabled).map((item) => ({ value: item.id, label: item.name }))}
+                      onChange={selectProcess}
+                    />
+                  </Flex>
+                )}
+              </Card>
+
+              <Card size="small" title="Блоки задачи" extra={<Text type="secondary">{processBlocks.length}</Text>}>
+                {tabs.length ? <Tabs items={tabs} /> : <Text type="secondary">У выбранного процесса пока нет блоков задачи.</Text>}
+              </Card>
+
+              <Collapse
+                size="small"
+                items={[{
+                  key: 'agent-commands',
+                  label: 'Команды для агента',
+                  children: (
+                    <Flex vertical gap="small">
+                      <Input.TextArea
+                        aria-label="Изменения для команды исправления"
+                        autoSize={{ minRows: 1, maxRows: 3 }}
+                        onChange={(event) => setEditDraft({ taskKey, value: event.target.value })}
+                        placeholder="Что нужно изменить?"
+                        value={editContext}
+                      />
+                      <Flex justify="space-between" align="center" gap="small" wrap="wrap">
+                        <Text type="secondary">Скопировать команду или контекст задачи</Text>
+                        <Space wrap size="small">
+                          <Button size="small" onClick={() => void copyPrompt('/taskmill update', 'Команда обновления')}>
+                            Обновить
+                          </Button>
+                          <Button
+                            size="small"
+                            disabled={!editContext.trim()}
+                            onClick={() => void copyPrompt(`/taskmill edit ${editContext.trim()}`, 'Команда исправления')}
+                            type="primary"
+                          >
+                            Исправить
+                          </Button>
+                          <Button size="small" onClick={() => void copyPrompt(taskContext, 'Контекст задачи')}>
+                            Контекст
+                          </Button>
+                        </Space>
+                      </Flex>
+                    </Flex>
+                  ),
+                }]}
+              />
+            </Flex>
+          </Col>
+
+          <Col xs={24} xl={8}>
+            <Card size="small" title="Контекст проекта">
+              <ProjectContext project={project} />
+            </Card>
+          </Col>
+        </Row>
       </Flex>
     </main>
   )

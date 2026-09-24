@@ -4,6 +4,7 @@ export const taskReferencesPlugin: PluginDefinition = {
   id: 'task-references',
   title: 'Связанные источники задачи',
   description: 'Ссылки на задачи, документацию, репозитории и другие источники.',
+  category: 'context',
   taskFieldSources: { references: 'references' },
   fields: [
     { id: 'references', label: 'Источники', type: 'object-list', value: [], addLabel: 'Добавить источник', fields: [

@@ -4,6 +4,7 @@ export const taskDatesPlugin: PluginDefinition = {
   id: 'task-dates',
   title: 'Сроки задачи',
   description: 'Дата начала, плановый пересмотр и последняя активность.',
+  category: 'delivery',
   taskFieldSources: {
     startedAt: 'startedAt',
     expiresAt: 'expiresAt',

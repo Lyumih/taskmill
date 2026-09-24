@@ -4,6 +4,7 @@ export const timeEstimatesPlugin: PluginDefinition = {
   id: 'time-estimates',
   title: 'Оценка времени',
   description: 'Оценка Jira, оценка агента, диапазон и фактически затраченное время.',
+  category: 'delivery',
   taskSource: 'estimates',
   fields: [
     { id: 'jiraHours', label: 'Оценка Jira', type: 'number', value: null, min: 0, unit: 'ч' },

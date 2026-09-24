@@ -12,6 +12,7 @@ export const apiErrorHandlingPlugin: PluginDefinition = {
   id: 'api-error-handling',
   title: 'API-запросы и обработка ошибок',
   description: 'Запросы, состояния загрузки и сценарии ошибок.',
+  category: 'technical',
   taskFieldSources: { requests: 'apiRequests' },
   fields: [
     { id: 'requests', label: 'API-запросы', type: 'object-list', value: [], addLabel: 'Добавить API-запрос', fields: [

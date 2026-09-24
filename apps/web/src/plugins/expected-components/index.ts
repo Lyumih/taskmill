@@ -4,6 +4,7 @@ export const expectedComponentsPlugin: PluginDefinition = {
   id: 'expected-components',
   title: 'Ожидаемые компоненты',
   description: 'Оценка объёма, структуры файлов и необходимых библиотечных и кастомных компонентов.',
+  category: 'planning',
   taskSource: 'expectedComponents',
   fields: [
     { id: 'confidence', label: 'Уверенность', type: 'choice', value: null, options: [

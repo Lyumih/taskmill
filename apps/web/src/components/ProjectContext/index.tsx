@@ -17,7 +17,8 @@ export function ProjectContext({ project }: ProjectContextProps) {
 
   return (
     <Collapse
-      defaultActiveKey={['processes', 'project-context']}
+      defaultActiveKey={['project-context']}
+      size="small"
       items={[
         {
           key: 'processes',

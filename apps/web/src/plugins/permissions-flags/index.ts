@@ -11,6 +11,7 @@ export const permissionsFlagsPlugin: PluginDefinition = {
   id: 'permissions-flags',
   title: 'Permissions и feature flags',
   description: 'Правила включения функций и контроля доступа.',
+  category: 'technical',
   taskSource: 'permissionsFlags',
   fields: [
     { id: 'featureFlags', label: 'Feature flags', type: 'object-list', value: [], addLabel: 'Добавить feature flag', fields: ruleFields },

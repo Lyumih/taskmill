@@ -4,6 +4,7 @@ export const agentPlanPlugin: PluginDefinition = {
   id: 'agent-plan',
   title: 'Подробный пошаговый план агента',
   description: 'Прогресс, этапы, действия, ожидаемые результаты и проверки.',
+  category: 'planning',
   taskSource: 'plan',
   fields: [
     { id: 'summary', label: 'Сводка плана', type: 'textarea', value: '' },

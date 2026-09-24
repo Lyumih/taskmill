@@ -4,6 +4,7 @@ export const taskAgentsPlugin: PluginDefinition = {
   id: 'task-agents',
   title: 'Агенты задачи',
   description: 'Назначенные агенты, роли, статусы и результаты.',
+  category: 'delivery',
   taskFieldSources: { agents: 'agents' },
   fields: [
     { id: 'agents', label: 'Агенты', type: 'object-list', value: [], addLabel: 'Добавить агента', fields: [

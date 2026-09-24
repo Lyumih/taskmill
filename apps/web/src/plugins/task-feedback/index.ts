@@ -4,6 +4,7 @@ export const taskFeedbackPlugin: PluginDefinition = {
   id: 'task-feedback',
   title: 'Обратная связь',
   description: 'Итог и замечания по workflow и работе задачи.',
+  category: 'context',
   taskSource: 'feedback',
   fields: [
     { id: 'summary', label: 'Тема обратной связи', type: 'text', value: '' },

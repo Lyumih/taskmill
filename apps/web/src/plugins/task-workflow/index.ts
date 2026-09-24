@@ -4,6 +4,7 @@ export const taskWorkflowPlugin: PluginDefinition = {
   id: 'task-workflow',
   title: 'Вопросы workflow',
   description: 'Текущий этап выбранного процесса и вопросы workflow с ответами.',
+  category: 'planning',
   taskSource: 'workflow',
   fields: [
     { id: 'currentStep', label: 'Текущий шаг', type: 'number', value: 1, min: 1 },

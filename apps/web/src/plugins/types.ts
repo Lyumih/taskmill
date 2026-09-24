@@ -30,11 +30,13 @@ export type PluginField = {
 )
 
 export type PluginValues = Record<string, PluginFieldValue>
+export type PluginCategory = 'planning' | 'delivery' | 'context' | 'technical'
 
 export type PluginDefinition = {
   id: string
   title: string
   description: string
+  category?: PluginCategory
   projectView?: boolean
   fields: PluginField[]
   taskSource?: string

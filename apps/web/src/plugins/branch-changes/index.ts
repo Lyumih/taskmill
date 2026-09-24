@@ -4,6 +4,7 @@ export const branchChangesPlugin: PluginDefinition = {
   id: 'branch-changes',
   title: 'Изменения в ветке',
   description: 'Счётчики и список изменённых файлов.',
+  category: 'delivery',
   taskSource: 'changes',
   fields: [
     { id: 'filesAdded', label: 'Добавлено файлов', type: 'number', value: 0, min: 0 },
