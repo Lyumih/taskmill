@@ -36,7 +36,9 @@ export function buildTaskContext(project: Project, task: TaskData) {
         const value = Object.hasOwn(values, field.id) ? values[field.id] : field.value
         return `  - ${field.label}: ${JSON.stringify(value)}`
       })
-      return [`- ${plugin.title}\n${fields.join('\n')}`]
+      const notes = Object.entries(task.pluginNotes?.[process.id]?.[block.id] ?? {})
+        .map(([fieldPath, note]) => `  - Заметка к полю ${fieldPath}: ${note}`)
+      return [`- ${plugin.title}\n${[...fields, ...notes].join('\n')}`]
     })
 
     if (processBlocks.length) lines.push(`Блоки выбранного процесса:\n${processBlocks.join('\n')}`)

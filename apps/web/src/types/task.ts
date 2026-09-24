@@ -6,6 +6,7 @@ export interface Task {
   type: string
   processId: string
   pluginData: Record<string, Record<string, Partial<PluginValues>>>
+  pluginNotes: Record<string, Record<string, Record<string, string>>>
   status: string
   priority: string
   project: {
@@ -105,7 +106,8 @@ export type DeepPartial<T> = T extends readonly (infer Item)[]
     ? { [Key in keyof T]?: DeepPartial<T[Key]> }
     : T
 
-export type TaskData = Omit<DeepPartial<Task>, 'pluginData'> & {
+export type TaskData = Omit<DeepPartial<Task>, 'pluginData' | 'pluginNotes'> & {
   pluginData?: Task['pluginData']
+  pluginNotes?: Task['pluginNotes']
 }
 export type TaskMockSeed = TaskData & DeepPartial<LegacyTaskPluginFields>

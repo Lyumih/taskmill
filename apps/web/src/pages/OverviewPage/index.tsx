@@ -90,13 +90,21 @@ export function OverviewPage({ project, projectId, taskId, task, onUpdateTask }:
                 <Alert type="warning" showIcon message={`${plugin.title} выключен в настройках проекта`} />
               ) : (
                 <PluginFieldsEditor
+                  key={`${taskKey}:${process?.id ?? ''}:${block.id}`}
                   plugin={plugin}
                   values={mergePluginValues(
                     projectPlugin.values ?? getPluginDefaultValues(plugin.id),
                     task.pluginData?.[process?.id ?? '']?.[block.id],
                   )}
+                  notes={task.pluginNotes?.[process?.id ?? '']?.[block.id]}
                   onChange={(fieldId, value) => {
                     if (process) updatePluginValue(process.id, block.id, fieldId, value)
+                  }}
+                  onNoteChange={(fieldPath, value) => {
+                    if (process) updatePluginNote(process.id, block.id, fieldPath, value)
+                  }}
+                  onNotesRemovePrefix={(prefix) => {
+                    if (process) removePluginNotesPrefix(process.id, block.id, prefix)
                   }}
                 />
               ),
@@ -122,6 +130,39 @@ export function OverviewPage({ project, projectId, taskId, task, onUpdateTask }:
         },
       },
     })
+  }
+
+  const updatePluginNote = (processId: string, blockId: string, fieldPath: string, value: string) => {
+    const pluginNotes = { ...task.pluginNotes }
+    const processNotes = { ...pluginNotes[processId] }
+    const blockNotes = { ...processNotes[blockId] }
+
+    if (value.trim()) blockNotes[fieldPath] = value
+    else delete blockNotes[fieldPath]
+
+    if (Object.keys(blockNotes).length) processNotes[blockId] = blockNotes
+    else delete processNotes[blockId]
+
+    if (Object.keys(processNotes).length) pluginNotes[processId] = processNotes
+    else delete pluginNotes[processId]
+
+    onUpdateTask({ pluginNotes })
+  }
+
+  const removePluginNotesPrefix = (processId: string, blockId: string, prefix: string) => {
+    const pluginNotes = { ...task.pluginNotes }
+    const processNotes = { ...pluginNotes[processId] }
+    const blockNotes = Object.fromEntries(
+      Object.entries(processNotes[blockId] ?? {}).filter(([fieldPath]) => !fieldPath.startsWith(prefix)),
+    )
+
+    if (Object.keys(blockNotes).length) processNotes[blockId] = blockNotes
+    else delete processNotes[blockId]
+
+    if (Object.keys(processNotes).length) pluginNotes[processId] = processNotes
+    else delete pluginNotes[processId]
+
+    onUpdateTask({ pluginNotes })
   }
 
   const copyPrompt = async (prompt: string, description: string) => {

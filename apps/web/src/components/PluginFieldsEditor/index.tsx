@@ -1,16 +1,17 @@
-import { Alert, Flex, Typography } from 'antd'
+import { Alert, Flex } from 'antd'
 import { BlockFieldEditor } from '../BlockFieldEditor'
 import type { PluginDefinition, PluginField, PluginFieldValue, PluginValues } from '../../plugins/types'
-
-const { Text } = Typography
 
 type PluginFieldsEditorProps = {
   plugin: PluginDefinition
   values: PluginValues
   onChange: (fieldId: string, value: PluginFieldValue) => void
+  notes?: Record<string, string>
+  onNoteChange?: (fieldPath: string, value: string) => void
+  onNotesRemovePrefix?: (fieldPathPrefix: string) => void
 }
 
-export function PluginFieldsEditor({ plugin, values, onChange }: PluginFieldsEditorProps) {
+export function PluginFieldsEditor({ plugin, values, onChange, notes, onNoteChange, onNotesRemovePrefix }: PluginFieldsEditorProps) {
   const errors = plugin.validate?.(values) ?? []
 
   return (
@@ -22,10 +23,15 @@ export function PluginFieldsEditor({ plugin, values, onChange }: PluginFieldsEdi
         } as PluginField
 
         return (
-          <Flex key={field.id} vertical gap="small">
-            <Text strong>{field.label}</Text>
-            <BlockFieldEditor field={field} onChange={(value) => onChange(field.id, value)} />
-          </Flex>
+          <BlockFieldEditor
+            key={field.id}
+            field={field}
+            fieldPath={field.id}
+            notes={notes}
+            onNoteChange={onNoteChange}
+            onNotesRemovePrefix={onNotesRemovePrefix}
+            onChange={(value) => onChange(field.id, value)}
+          />
         )
       })}
       {errors.length > 0 && <Alert type="warning" showIcon message={errors.join(' ')} />}
