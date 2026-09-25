@@ -237,7 +237,6 @@ export function WorkspaceRouter() {
         ])
         const taskId = workspace.project.tasks[0]?.id ?? ''
         setFallbackSelection({ projectId: workspace.project.id, taskId })
-        navigate(taskId ? taskPath(workspace.project.id, taskId) : '/processes')
       } catch (error) {
         if (!cancelled) {
           setResumeAvailable(Boolean(savedDirectoryHandleRef.current))
@@ -268,7 +267,9 @@ export function WorkspaceRouter() {
       : location.pathname === '/processes'
         ? 'processes'
         : 'task'
-  const defaultTaskPath = taskPath(fallbackSelection.projectId, fallbackSelection.taskId)
+  const defaultTaskPath = fallbackSelection.taskId
+    ? taskPath(fallbackSelection.projectId, fallbackSelection.taskId)
+    : '/processes'
   const selectedTaskPath = selectedProject?.tasks.some((task) => task.id === selectedTaskId)
     ? taskPath(selectedProjectId, selectedTaskId)
     : defaultTaskPath
@@ -314,8 +315,8 @@ export function WorkspaceRouter() {
   }
 
   const routeContent = useRoutes([
-    { path: '/', element: <Navigate replace to={defaultTaskPath} /> },
-    { path: '/tasks', element: <Navigate replace to={selectedTaskPath} /> },
+    { path: '/', element: connectionLoading ? null : <Navigate replace to={defaultTaskPath} /> },
+    { path: '/tasks', element: connectionLoading ? null : <Navigate replace to={selectedTaskPath} /> },
     {
       path: '/settings',
       element: selectedProject ? <SettingsPage project={selectedProject} /> : <Empty description="Проект не найден" />,
