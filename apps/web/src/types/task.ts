@@ -4,8 +4,16 @@ import type { TaskProcessOverride } from './process'
 export interface Task {
   id: string
   title: string
-  type: string
-  processId: string
+  type?: string
+  processId?: string
+  preparationStatus?: 'reviewRequired' | 'ready'
+  fillStatus?: 'notStarted' | 'complete' | 'partial' | 'stale'
+  sources?: Array<{
+    name: string
+    value: string
+    availability?: 'unchecked' | 'available' | 'unavailable'
+    note?: string
+  }>
   processOverride?: TaskProcessOverride
   pluginData: Record<string, Record<string, Partial<PluginValues>>>
   pluginNotes: Record<string, Record<string, Record<string, string>>>

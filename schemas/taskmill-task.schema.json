@@ -8,12 +8,28 @@
     "schemaVersion": { "const": 1 },
     "task": {
       "type": "object",
-      "required": ["id", "title", "type", "processId"],
+      "required": ["id", "title"],
       "properties": {
         "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
         "title": { "type": "string", "minLength": 1 },
         "type": { "type": "string", "minLength": 1 },
         "processId": { "type": "string", "minLength": 1 },
+        "preparationStatus": { "enum": ["reviewRequired", "ready"] },
+        "fillStatus": { "enum": ["notStarted", "complete", "partial", "stale"] },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "value"],
+            "properties": {
+              "name": { "type": "string" },
+              "value": { "type": "string" },
+              "availability": { "enum": ["unchecked", "available", "unavailable"] },
+              "note": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
         "processOverride": {
           "type": "object",
           "properties": {

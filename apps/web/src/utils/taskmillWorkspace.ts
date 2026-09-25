@@ -18,8 +18,6 @@ export type TaskmillConfigFile = {
 export type PersistedTaskData = TaskData & {
   id: string
   title: string
-  type: string
-  processId: string
 }
 
 export type TaskmillTaskFile = {
@@ -252,7 +250,7 @@ export class TaskmillDirectoryWorkspace {
         if (task.id !== taskIdFromFile) {
           throw new Error(`${entry.name}: task.id должен совпадать с именем файла (${taskIdFromFile})`)
         }
-        if (!processes.some((process) => process.id === task.processId)) {
+        if (task.processId && !processes.some((process) => process.id === task.processId)) {
           throw new Error(`${entry.name}: неизвестный processId ${task.processId}`)
         }
         const selectedProcess = processes.find((process) => process.id === task.processId)

@@ -21,10 +21,12 @@ type AppLayoutProps = PropsWithChildren<{
   selectedTaskId: string
   activePage: AppPage
   connected: boolean
+  resumeAvailable: boolean
   connectionLoading: boolean
   saveStatus: 'idle' | 'pending' | 'saving' | 'saved' | 'error'
   workspaceError?: string
   onConnect: () => void
+  onResume: () => void
   onRefresh: () => void
   onSelectProject: (projectId: string) => void
   onSelectTask: (taskId: string) => void
@@ -37,10 +39,12 @@ export function AppLayout({
   selectedTaskId,
   activePage,
   connected,
+  resumeAvailable,
   connectionLoading,
   saveStatus,
   workspaceError,
   onConnect,
+  onResume,
   onRefresh,
   onSelectProject,
   onSelectTask,
@@ -156,14 +160,21 @@ export function AppLayout({
               {selectedProject?.name ?? 'Проекты'} / {activePage === 'task' ? 'Разбор задачи' : activePage === 'settings' ? 'Настройки' : activePage === 'blocks' ? 'Блоки' : 'Процессы'}
             </Text>
             <Flex align="center" gap="small" wrap="wrap">
-              <Tag color={connected ? 'success' : 'default'}>{connected ? 'Папка .taskmill подключена' : 'Папка не подключена'}</Tag>
+              <Tag color={connected ? 'success' : resumeAvailable ? 'warning' : 'default'}>
+                {connected ? 'Папка .taskmill подключена' : resumeAvailable ? 'Папка сохранена, нужен доступ' : 'Папка не подключена'}
+              </Tag>
               {connected && saveStatus !== 'idle' && (
                 <Tag color={saveStatus === 'error' ? 'error' : saveStatus === 'saved' ? 'success' : 'processing'}>
                   {saveStatus === 'pending' ? 'Ожидает сохранения' : saveStatus === 'saving' ? 'Сохранение…' : saveStatus === 'saved' ? 'Сохранено' : 'Ошибка сохранения'}
                 </Tag>
               )}
+              {resumeAvailable && (
+                <Button loading={connectionLoading} onClick={onResume}>
+                  Возобновить доступ
+                </Button>
+              )}
               <Button icon={<FolderOpenOutlined />} loading={connectionLoading} onClick={onConnect}>
-                Выбрать .taskmill
+                {resumeAvailable ? 'Выбрать другую папку' : 'Выбрать .taskmill'}
               </Button>
               {connected && <Button icon={<ReloadOutlined />} onClick={onRefresh}>Обновить</Button>}
             </Flex>

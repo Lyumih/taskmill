@@ -5,6 +5,8 @@
     "title": "Добавить фильтр задач",
     "type": "Feature",
     "processId": "feature",
+    "preparationStatus": "ready",
+    "fillStatus": "complete",
     "status": "Новая",
     "priority": "Средний",
     "project": {

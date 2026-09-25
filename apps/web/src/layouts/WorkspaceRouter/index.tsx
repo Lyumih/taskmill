@@ -5,6 +5,12 @@ import { mockProjects } from '../../../mock'
 import type { ProcessDefinition } from '../../types/process'
 import type { Project, ProjectPluginConfig } from '../../types/project'
 import type { TaskData } from '../../types/task'
+import {
+  clearTaskmillDirectoryHandle,
+  loadTaskmillDirectoryHandle,
+  saveTaskmillDirectoryHandle,
+  type PermissionedTaskmillDirectoryHandle,
+} from '../../utils/taskmillDirectoryHandle'
 import { TaskmillDirectoryWorkspace } from '../../utils/taskmillWorkspace'
 import { AppLayout } from '../AppLayout'
 import type { AppPage } from '../AppLayout'
@@ -56,9 +62,11 @@ export function WorkspaceRouter() {
   const pendingSaveRef = useRef<Project | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const savedDirectoryHandleRef = useRef<PermissionedTaskmillDirectoryHandle | null>(null)
   const [connected, setConnected] = useState(false)
+  const [resumeAvailable, setResumeAvailable] = useState(false)
   const [connectedProjectId, setConnectedProjectId] = useState<string | null>(null)
-  const [connectionLoading, setConnectionLoading] = useState(false)
+  const [connectionLoading, setConnectionLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
   const [workspaceError, setWorkspaceError] = useState<string>()
   const [fallbackSelection, setFallbackSelection] = useState({
@@ -126,6 +134,18 @@ export function WorkspaceRouter() {
       const workspace = await pickPromise
       if (workspaceRef.current && !(await flushPendingSave())) return
       await saveQueueRef.current
+      savedDirectoryHandleRef.current = workspace.directory as PermissionedTaskmillDirectoryHandle
+      setResumeAvailable(false)
+      try {
+        await saveTaskmillDirectoryHandle(workspace.directory)
+      } catch {
+        try {
+          await clearTaskmillDirectoryHandle()
+        } catch {
+          // The current session remains connected; a later reload may require reselecting the folder.
+        }
+        setWorkspaceError('Папка подключена, но браузер не смог запомнить её. После перезагрузки выберите её снова.')
+      }
       workspaceRef.current = workspace
       setConnected(true)
       setSaveStatus('idle')
@@ -134,6 +154,35 @@ export function WorkspaceRouter() {
       if (!(error instanceof DOMException) || error.name !== 'AbortError') {
         setWorkspaceError(error instanceof Error ? error.message : 'Не удалось подключить папку .taskmill.')
       }
+    } finally {
+      setConnectionLoading(false)
+    }
+  }
+
+  const resumeWorkspace = async () => {
+    const directory = savedDirectoryHandleRef.current
+    if (!directory) return
+
+    const permissionPromise = directory.requestPermission({ mode: 'readwrite' })
+    setConnectionLoading(true)
+    setWorkspaceError(undefined)
+    try {
+      const permission = await permissionPromise
+      if (permission !== 'granted') {
+        setResumeAvailable(true)
+        setWorkspaceError('Браузер не разрешил доступ. Выберите папку ещё раз, чтобы подключить её.')
+        return
+      }
+
+      const workspace = await TaskmillDirectoryWorkspace.open(directory)
+      workspaceRef.current = workspace
+      setConnected(true)
+      setResumeAvailable(false)
+      setSaveStatus('idle')
+      replaceConnectedProject(workspace.project)
+    } catch (error) {
+      setResumeAvailable(true)
+      setWorkspaceError(error instanceof Error ? error.message : 'Не удалось восстановить папку .taskmill.')
     } finally {
       setConnectionLoading(false)
     }
@@ -162,9 +211,49 @@ export function WorkspaceRouter() {
     }
   }
 
-  useEffect(() => () => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-  }, [])
+  useEffect(() => {
+    let cancelled = false
+    const restoreWorkspace = async () => {
+      try {
+        const directory = await loadTaskmillDirectoryHandle()
+        if (cancelled || !directory) return
+        savedDirectoryHandleRef.current = directory
+
+        const permission = await directory.queryPermission({ mode: 'readwrite' })
+        if (permission !== 'granted') {
+          setResumeAvailable(true)
+          return
+        }
+
+        const workspace = await TaskmillDirectoryWorkspace.open(directory)
+        if (cancelled) return
+        workspaceRef.current = workspace
+        connectedProjectIdRef.current = workspace.project.id
+        setConnectedProjectId(workspace.project.id)
+        setConnected(true)
+        replaceProjects([
+          ...projectsRef.current.filter((project) => project.id !== workspace.project.id),
+          workspace.project,
+        ])
+        const taskId = workspace.project.tasks[0]?.id ?? ''
+        setFallbackSelection({ projectId: workspace.project.id, taskId })
+        navigate(taskId ? taskPath(workspace.project.id, taskId) : '/processes')
+      } catch (error) {
+        if (!cancelled) {
+          setResumeAvailable(Boolean(savedDirectoryHandleRef.current))
+          setWorkspaceError(error instanceof Error ? error.message : 'Не удалось восстановить папку .taskmill.')
+        }
+      } finally {
+        if (!cancelled) setConnectionLoading(false)
+      }
+    }
+
+    void restoreWorkspace()
+    return () => {
+      cancelled = true
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [navigate])
   const route = parseTaskRoute(location.pathname)
   const routeProject = route ? projects.find((project) => project.id === route.projectId) : undefined
   const routeTaskId = route ? findTaskId(projects, route.projectId, route.taskSegment) : undefined
@@ -276,10 +365,12 @@ export function WorkspaceRouter() {
       selectedTaskId={selectedTaskId}
       activePage={activePage}
       connected={connected}
+      resumeAvailable={resumeAvailable}
       connectionLoading={connectionLoading}
       saveStatus={saveStatus}
       workspaceError={workspaceError}
       onConnect={() => void connectWorkspace()}
+      onResume={() => void resumeWorkspace()}
       onRefresh={() => void refreshWorkspace()}
       onSelectTask={(taskId) => {
         if (selectedProject) {

@@ -1,4 +1,4 @@
-import { BranchesOutlined, FolderOpenOutlined } from '@ant-design/icons'
+import { BranchesOutlined, DeleteOutlined, FolderOpenOutlined, PlusOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 import {
   Alert,
@@ -58,6 +58,11 @@ export function OverviewPage({ project, projectId, taskId, task, persisted, onUp
     : undefined
   const currentStep = typeof workflowValues?.currentStep === 'number' ? workflowValues.currentStep : 1
   const taskContext = buildTaskContext(project, task)
+  const preparationStatus = task.preparationStatus ?? (task.processId ? 'ready' : 'reviewRequired')
+  const preparationReady = preparationStatus === 'ready' && Boolean(process)
+  const fillStatus = task.fillStatus ?? 'notStarted'
+  const sources = task.sources ?? []
+  const sourcesComplete = sources.every((source) => source.name?.trim() && source.value?.trim())
   const processBlocks = process?.blocks.flatMap((block) => {
     if (!block.enabled) return []
     const plugin = getPluginDefinition(block.pluginId)
@@ -114,7 +119,25 @@ export function OverviewPage({ project, projectId, taskId, task, persisted, onUp
 
   const selectProcess = (processId: string) => {
     const nextProcess = project.processes.find((item) => item.id === processId)
-    if (nextProcess) onUpdateTask({ processId, type: nextProcess.taskType, processOverride: undefined })
+    if (!nextProcess) return
+    const changed = task.processId !== processId
+    onUpdateTask({
+      processId,
+      type: nextProcess.taskType,
+      processOverride: undefined,
+      ...(changed ? {
+        preparationStatus: 'reviewRequired',
+        fillStatus: fillStatus === 'complete' || fillStatus === 'partial' ? 'stale' : fillStatus,
+      } : {}),
+    })
+  }
+
+  const updateSources = (nextSources: NonNullable<TaskData['sources']>) => {
+    onUpdateTask({
+      sources: nextSources,
+      preparationStatus: 'reviewRequired',
+      fillStatus: fillStatus === 'complete' || fillStatus === 'partial' ? 'stale' : fillStatus,
+    })
   }
 
   const updatePluginValue = (processId: string, blockId: string, fieldId: string, value: PluginFieldValue) => {
@@ -241,20 +264,109 @@ export function OverviewPage({ project, projectId, taskId, task, persisted, onUp
             )}
           </Card>
 
+          <Card size="small" title="Подготовка задачи">
+            <Flex vertical gap="middle">
+              <Alert
+                showIcon
+                type={preparationReady ? 'success' : 'warning'}
+                message={preparationReady ? 'Подготовка подтверждена' : 'Проверьте процесс и источники перед анализом'}
+                description={process
+                  ? sourcesComplete
+                    ? 'Проверьте выбранный процесс и ссылки. После подтверждения станет доступно глубокое заполнение.'
+                    : 'Заполните или удалите пустую строку источника, затем подтвердите подготовку.'
+                  : 'Сначала выберите тип задачи и соответствующий процесс.'}
+              />
+              {sources.map((source, index) => (
+                <Flex key={`${index}-${source.name}`} align="start" gap="small" wrap="wrap">
+                  <Input
+                    aria-label={`Название источника ${index + 1}`}
+                    onChange={(event) => updateSources(sources.map((item, itemIndex) => itemIndex === index
+                      ? { ...item, name: event.target.value, availability: 'unchecked' }
+                      : item))}
+                    placeholder="Название источника"
+                    style={{ width: 220 }}
+                    value={source.name}
+                  />
+                  <Input
+                    aria-label={`Ссылка или путь источника ${index + 1}`}
+                    onChange={(event) => updateSources(sources.map((item, itemIndex) => itemIndex === index
+                      ? { ...item, value: event.target.value, availability: 'unchecked' }
+                      : item))}
+                    placeholder="URL, ключ Jira или локальный путь"
+                    style={{ width: 'min(100%, 320px)' }}
+                    value={source.value}
+                  />
+                  <Tag color={source.availability === 'available' ? 'green' : source.availability === 'unavailable' ? 'red' : 'default'}>
+                    {source.availability === 'available' ? 'Доступен' : source.availability === 'unavailable' ? 'Недоступен' : 'Не проверен'}
+                  </Tag>
+                  <Button
+                    aria-label={`Удалить источник ${source.name || index + 1}`}
+                    icon={<DeleteOutlined />}
+                    onClick={() => updateSources(sources.filter((_, itemIndex) => itemIndex !== index))}
+                    size="small"
+                  />
+                  {source.note && <Text type="secondary">{source.note}</Text>}
+                </Flex>
+              ))}
+              <Flex gap="small" wrap="wrap">
+                <Button
+                  icon={<PlusOutlined />}
+                  onClick={() => updateSources([...sources, { name: '', value: '', availability: 'unchecked' }])}
+                  size="small"
+                >
+                  Добавить источник
+                </Button>
+                {!preparationReady && (
+                  <Button
+                    disabled={!process || !sourcesComplete}
+                    onClick={() => onUpdateTask({ preparationStatus: 'ready' })}
+                    size="small"
+                    type="primary"
+                  >
+                    Подтвердить подготовку
+                  </Button>
+                )}
+                <Button
+                  disabled={!preparationReady || !persisted}
+                  onClick={() => void copyPrompt('/taskmill enrich', 'Команда глубокого заполнения')}
+                  size="small"
+                >
+                  Скопировать команду enrich
+                </Button>
+                <Tag color={fillStatus === 'complete' ? 'green' : fillStatus === 'partial' || fillStatus === 'stale' ? 'orange' : 'default'}>
+                  {fillStatus === 'complete'
+                    ? 'Глубокий анализ заполнен'
+                    : fillStatus === 'partial'
+                      ? 'Глубокий анализ заполнен частично'
+                      : fillStatus === 'stale'
+                        ? 'Данные анализа устарели'
+                        : 'Глубокий анализ не запускался'}
+                </Tag>
+              </Flex>
+            </Flex>
+          </Card>
+
           <Card
             size="small"
             title="Блоки задачи"
             extra={(
               <Button
                 size="small"
-                disabled={!processBlocks.length}
+                disabled={!preparationReady || !processBlocks.length}
                 onClick={() => setAllBlocksExpanded((expanded) => !expanded)}
               >
                 {allBlocksExpanded ? 'Свернуть все' : 'Развернуть все'}
               </Button>
             )}
           >
-            {groupedBlocks.length ? allBlocksExpanded ? (
+            {!preparationReady ? (
+              <Alert
+                showIcon
+                type="info"
+                message="Блоки закрыты до подтверждения подготовки"
+                description="Выберите процесс, проверьте ссылки и подтвердите подготовку, чтобы открыть блоки задачи."
+              />
+            ) : groupedBlocks.length ? allBlocksExpanded ? (
               <Flex vertical gap="large">
                 {groupedBlocks.map(({ group, entries }) => (
                   <Flex key={group.key} vertical gap="small">
